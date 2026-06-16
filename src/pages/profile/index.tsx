@@ -123,6 +123,22 @@ const ProfilePage: React.FC = () => {
     return allCycles.filter(c => c.index !== currentCycleIndex);
   }, [allCycles, currentCycleIndex]);
 
+  const trendData = useMemo(() => {
+    const sorted = [...allCycles].sort((a, b) => a.index - b.index);
+    const recent = sorted.slice(-5);
+    const active = recent.filter(c => !c.summary.isSkipped);
+    const avgCoverage = active.length > 0
+      ? Math.round(active.reduce((s, c) => s + c.summary.coveragePercent, 0) / active.length)
+      : 0;
+    const avgAbnormal = active.length > 0
+      ? +(active.reduce((s, c) => s + c.summary.abnormalCount, 0) / active.length).toFixed(1)
+      : 0;
+    const avgMedication = active.length > 0
+      ? +(active.reduce((s, c) => s + c.summary.medicationCount, 0) / active.length).toFixed(1)
+      : 0;
+    return { recent, avgCoverage, avgAbnormal, avgMedication, activeCount: active.length };
+  }, [allCycles]);
+
   return (
     <View className={styles.container}>
       <View className={styles.profileHeader}>
@@ -407,6 +423,111 @@ const ProfilePage: React.FC = () => {
           </View>
         )}
       </View>
+
+      {trendData.recent.length >= 2 && (
+        <View className={styles.section}>
+          <View className={styles.sectionHeader}>
+            <Text className={styles.sectionTitle}>周期趋势</Text>
+            <Text className={styles.sectionCount}>
+              近{trendData.recent.length}周期 · 均值不含跳过
+            </Text>
+          </View>
+
+          <View className={styles.trendCard}>
+            <View className={styles.trendHeader}>
+              <Text className={styles.trendHeaderLabel}>重点覆盖</Text>
+              <Text className={styles.trendAvg}>均值 {trendData.avgCoverage}%</Text>
+            </View>
+            <View className={styles.trendBars}>
+              {trendData.recent.map(cycle => {
+                const pct = cycle.summary.coveragePercent;
+                return (
+                  <View key={cycle.index} className={styles.trendBarWrap}>
+                    <Text className={styles.trendBarLabel}>
+                      {cycle.index}
+                      {cycle.summary.isSkipped && '⏭'}
+                    </Text>
+                    <View className={styles.trendBarTrack}>
+                      <View
+                        className={classnames(
+                          styles.trendBarFill,
+                          cycle.summary.isSkipped && styles.trendBarFillSkipped
+                        )}
+                        style={{ width: `${pct}%`, background: getCoverageColor(pct) }}
+                      />
+                    </View>
+                    <Text className={styles.trendBarValue}>{pct}%</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
+          <View className={styles.trendCard}>
+            <View className={styles.trendHeader}>
+              <Text className={styles.trendHeaderLabel}>异常次数</Text>
+              <Text className={styles.trendAvg}>均值 {trendData.avgAbnormal}</Text>
+            </View>
+            <View className={styles.trendBars}>
+              {trendData.recent.map(cycle => {
+                const count = cycle.summary.abnormalCount;
+                const maxCount = Math.max(5, ...trendData.recent.map(c => c.summary.abnormalCount));
+                const pct = maxCount > 0 ? Math.round((count / maxCount) * 100) : 0;
+                return (
+                  <View key={cycle.index} className={styles.trendBarWrap}>
+                    <Text className={styles.trendBarLabel}>
+                      {cycle.index}
+                      {cycle.summary.isSkipped && '⏭'}
+                    </Text>
+                    <View className={styles.trendBarTrack}>
+                      <View
+                        className={classnames(
+                          styles.trendBarFill,
+                          cycle.summary.isSkipped && styles.trendBarFillSkipped
+                        )}
+                        style={{ width: `${pct}%`, background: '#D9534F' }}
+                      />
+                    </View>
+                    <Text className={styles.trendBarValue}>{count}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
+          <View className={styles.trendCard}>
+            <View className={styles.trendHeader}>
+              <Text className={styles.trendHeaderLabel}>用药次数</Text>
+              <Text className={styles.trendAvg}>均值 {trendData.avgMedication}</Text>
+            </View>
+            <View className={styles.trendBars}>
+              {trendData.recent.map(cycle => {
+                const count = cycle.summary.medicationCount;
+                const maxCount = Math.max(5, ...trendData.recent.map(c => c.summary.medicationCount));
+                const pct = maxCount > 0 ? Math.round((count / maxCount) * 100) : 0;
+                return (
+                  <View key={cycle.index} className={styles.trendBarWrap}>
+                    <Text className={styles.trendBarLabel}>
+                      {cycle.index}
+                      {cycle.summary.isSkipped && '⏭'}
+                    </Text>
+                    <View className={styles.trendBarTrack}>
+                      <View
+                        className={classnames(
+                          styles.trendBarFill,
+                          cycle.summary.isSkipped && styles.trendBarFillSkipped
+                        )}
+                        style={{ width: `${pct}%`, background: '#7EC8A3' }}
+                      />
+                    </View>
+                    <Text className={styles.trendBarValue}>{count}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+      )}
 
       <View className={styles.privacyCard}>
         <Text className={styles.privacyTitle}>🔒 隐私保护</Text>

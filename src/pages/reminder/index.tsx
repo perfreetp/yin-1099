@@ -9,7 +9,7 @@ import styles from './index.module.scss';
 const ReminderPage: React.FC = () => {
   const {
     reminderConfig, updateReminderConfig, cycleConfig, records,
-    requestNotificationAuth, evalReminder, getNotificationEnvStatus
+    requestNotificationAuth, evalReminder, getNotificationEnvStatus, canSubscribeMessages
   } = useApp();
 
   const [authResult, setAuthResult] = useState<{ success: boolean; isEnvironmentSupported: boolean; message: string } | null>(null);
@@ -58,26 +58,52 @@ const ReminderPage: React.FC = () => {
     const result = evalReminder();
     setLastTestResult(result);
 
+    const modeTag = result.isLocalPreview ? '本地预览' : '实际订阅';
+
     if (result.shouldRemind) {
-      let msg = `【本地预览】提醒内容：${result.reason}`;
-      msg += `\n\n女方 ${result.femaleNotified ? '✓ 会收到' : '✗ 不会收到'}（${result.femaleTime}）`;
-      msg += `\n男方 ${result.maleNotified ? '✓ 会收到' : '✗ 不会收到'}（${result.maleTime}）`;
+      let msg = `【${modeTag}】${result.reason}`;
+
+      if (result.femaleNotified || result.maleNotified) {
+        msg += '\n\n接收人：';
+        if (result.femaleNotified) {
+          msg += `\n女方 ✓ ${result.femaleTime} 推送`;
+        }
+        if (result.maleNotified) {
+          msg += `\n男方 ✓ ${result.maleTime} 推送`;
+        }
+        if (!result.femaleNotified && reminderConfig.notifyFemale === false) {
+          msg += '\n女方 ✗ 已关闭';
+        }
+        if (!result.maleNotified && reminderConfig.notifyMale === false) {
+          msg += '\n男方 ✗ 已关闭';
+        }
+      } else {
+        msg += '\n\n当前没有开启接收人，不会实际发送提醒。';
+      }
+
+      if (result.isLocalPreview) {
+        msg += '\n\n⚠️ 本次测试为本地预览，不会发送真实订阅消息。';
+      }
 
       if (reminderConfig.vibrate) {
         Taro.vibrateShort();
       }
 
       Taro.showModal({
-        title: '🔔 提醒预览结果',
+        title: `🔔 提醒测试结果（${modeTag}）`,
         content: msg,
         showCancel: false,
         confirmText: '知道了',
         confirmColor: '#D4859C'
       });
     } else {
+      let content = `原因：${result.reason}`;
+      if (result.reason.includes('没有接收人')) {
+        content += '\n\n请至少开启一位接收人的提醒开关。';
+      }
       Taro.showModal({
         title: '🔕 今日不会触发提醒',
-        content: `原因：${result.reason}`,
+        content,
         showCancel: false,
         confirmText: '知道了',
         confirmColor: '#D4859C'
@@ -90,18 +116,21 @@ const ReminderPage: React.FC = () => {
   const todayInfo = getTodayInfo(cycleConfig, records);
   const reminderEval = evalReminder();
   const envStatus = getNotificationEnvStatus();
+  const canSubscribe = canSubscribeMessages();
 
   const getEnvText = () => {
     if (authResult && !authResult.isEnvironmentSupported) return '当前环境不支持订阅通知';
     if (authResult && authResult.success) return '✓ 已授权，可正常推送';
     if (envStatus === 'h5') return '网页预览环境，无法订阅';
     if (envStatus === 'unknown') return '环境未识别，无法订阅';
-    return '尚未授权';
+    if (canSubscribe) return '环境支持，尚未授权';
+    return '尚未配置模板';
   };
 
   const getEnvColor = () => {
     if (authResult && authResult.success) return '#7EC8A3';
     if (authResult && !authResult.isEnvironmentSupported) return '#D99660';
+    if (canSubscribe) return '#D99660';
     return '#D9534F';
   };
 
@@ -123,13 +152,13 @@ const ReminderPage: React.FC = () => {
               {getEnvText()}
             </Text>
           </View>
-          {!authResult?.success && (
+          {!(authResult?.success) && (
             <Button
               className='primaryButton'
               style={{ height: '64rpx', fontSize: '24rpx', padding: '0 24rpx', borderRadius: '32rpx' }}
               onClick={handleRequestAuth}
             >
-              {envStatus === 'miniapp' ? '去授权' : '查看详情'}
+              {envStatus === 'miniapp' && canSubscribe ? '去授权' : '查看详情'}
             </Button>
           )}
         </View>
@@ -274,14 +303,16 @@ const ReminderPage: React.FC = () => {
           <View className={styles.previewCard}>
             <Text className={styles.previewLabel}>
               今日提醒判定
-              {reminderEval.shouldRemind ? ' · 会提醒' : ' · 不会提醒'}
+              {reminderEval.shouldRemind
+                ? (reminderEval.femaleNotified || reminderEval.maleNotified) ? ' · 会提醒' : ' · 无接收人'
+                : ' · 不会提醒'}
               <Text style={{ fontSize: '20rpx', fontWeight: 400, marginLeft: '8rpx', color: reminderEval.isLocalPreview ? '#D99660' : '#7EC8A3' }}>
                 {reminderEval.isLocalPreview ? '（本地预览）' : '（实际订阅）'}
               </Text>
             </Text>
             <View className={styles.previewContent}>
               <View className={styles.previewIcon}>
-                {reminderEval.shouldRemind
+                {reminderEval.shouldRemind && (reminderEval.femaleNotified || reminderEval.maleNotified)
                   ? (reminderEval.intensity >= 3 ? '💗' : reminderEval.intensity >= 2 ? '🌱' : '🍂')
                   : '🔕'}
               </View>
@@ -289,7 +320,7 @@ const ReminderPage: React.FC = () => {
                 <Text className={styles.previewTitle}>
                   {reminderEval.reason}
                 </Text>
-                {reminderEval.shouldRemind && (
+                {reminderEval.shouldRemind && (reminderEval.femaleNotified || reminderEval.maleNotified) && (
                   <>
                     <Text className={styles.previewDesc}>
                       女方 {reminderEval.femaleNotified ? `✓ ${reminderEval.femaleTime} 推送` : '✗ 已关闭'}
@@ -302,6 +333,11 @@ const ReminderPage: React.FC = () => {
                     </Text>
                   </>
                 )}
+                {reminderEval.shouldRemind && !reminderEval.femaleNotified && !reminderEval.maleNotified && (
+                  <Text className={styles.previewDesc}>
+                    所有接收人均已关闭，不会发送提醒
+                  </Text>
+                )}
                 {!reminderEval.shouldRemind && (
                   <Text className={styles.previewDesc}>
                     当前配置下今日不会触发提醒
@@ -313,7 +349,7 @@ const ReminderPage: React.FC = () => {
             {reminderEval.isLocalPreview && (
               <View className={styles.previewHint}>
                 <Text className={styles.previewHintText}>
-                  ⚠️ 当前为本地预览模式。{reminderEval.canSubscribe
+                  ⚠️ 当前为本地预览模式。{canSubscribe
                     ? '请点击上方「去授权」开启订阅后，将发送实际提醒。'
                     : '发布小程序并配置消息模板后，可发送实际订阅消息。'}
                 </Text>

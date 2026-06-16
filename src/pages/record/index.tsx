@@ -5,8 +5,8 @@ import dayjs from 'dayjs';
 import classnames from 'classnames';
 import { useApp } from '@/store/AppContext';
 import RecordItem from '@/components/RecordItem';
-import { formatDate } from '@/utils/cycle';
-import type { RecordType } from '@/types';
+import { formatDate, getRecordsForCycle, getCycleDateRange } from '@/utils/cycle';
+import type { RecordType, CycleArchive } from '@/types';
 import styles from './index.module.scss';
 
 const FILTER_TABS = [
@@ -25,7 +25,13 @@ const RECORD_TYPES: Array<{ value: RecordType; label: string; icon: string; desc
 ];
 
 const RecordPage: React.FC = () => {
-  const { records, addRecord, deleteRecord } = useApp();
+  const {
+    records, cycleConfig, addRecord, deleteRecord,
+    currentCycleIndex, cycles, getAllCycleSummaries
+  } = useApp();
+
+  const [viewMode, setViewMode] = useState<'current' | 'history'>('current');
+  const [selectedHistoryIdx, setSelectedHistoryIdx] = useState<number | null>(null);
   const [filter, setFilter] = useState<string>('all');
   const [showModal, setShowModal] = useState(false);
   const [formType, setFormType] = useState<RecordType>('intercourse');
@@ -37,19 +43,47 @@ const RecordPage: React.FC = () => {
     console.log('[RecordPage] didShow');
   });
 
+  const allCycles = useMemo(() => getAllCycleSummaries(), [getAllCycleSummaries]);
+
+  const activeCycleConfig = useMemo(() => {
+    if (viewMode === 'current') return cycleConfig;
+    if (selectedHistoryIdx !== null) {
+      const found = cycles.find(c => c.index === selectedHistoryIdx);
+      if (found) return found.config;
+    }
+    return cycleConfig;
+  }, [viewMode, selectedHistoryIdx, cycleConfig, cycles]);
+
+  const cycleRecords = useMemo(() => {
+    return getRecordsForCycle(records, activeCycleConfig);
+  }, [records, activeCycleConfig]);
+
   const filteredRecords = useMemo(() => {
     const list = filter === 'all'
-      ? records
-      : records.filter(r => r.type === filter);
+      ? cycleRecords
+      : cycleRecords.filter(r => r.type === filter);
     return [...list].sort((a, b) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf());
-  }, [records, filter]);
+  }, [cycleRecords, filter]);
 
   const stats = useMemo(() => {
-    const intercourseCount = records.filter(r => r.type === 'intercourse').length;
-    const abnormalCount = records.filter(r => r.type === 'period_abnormal').length;
-    const medicationCount = records.filter(r => r.type === 'medication').length;
-    return { intercourseCount, abnormalCount, medicationCount };
-  }, [records]);
+    const intercourseCount = cycleRecords.filter(r => r.type === 'intercourse').length;
+    const abnormalCount = cycleRecords.filter(r => r.type === 'period_abnormal').length;
+    const medicationCount = cycleRecords.filter(r => r.type === 'medication').length;
+    const symptomCount = cycleRecords.filter(r => r.type === 'symptom').length;
+    return { intercourseCount, abnormalCount, medicationCount, symptomCount };
+  }, [cycleRecords]);
+
+  const cycleDateRange = useMemo(() => {
+    const range = getCycleDateRange(activeCycleConfig);
+    return {
+      start: formatDate(range.start, 'M月D日'),
+      end: formatDate(range.end, 'M月D日')
+    };
+  }, [activeCycleConfig]);
+
+  const historyCycles = useMemo(() => {
+    return allCycles.filter(c => c.index !== currentCycleIndex);
+  }, [allCycles, currentCycleIndex]);
 
   const handleOpenModal = () => {
     setFormType('intercourse');
@@ -68,7 +102,7 @@ const RecordPage: React.FC = () => {
       const res = await Taro.chooseDate({
         type: 'date',
         begin: dayjs().subtract(1, 'year').format('YYYY-MM-DD'),
-        end: dayjs().format('YYYY-MM-DD'),
+        end: dayjs().add(1, 'year').format('YYYY-MM-DD'),
         value: formDate
       });
       if (res && res.value) {
@@ -108,11 +142,66 @@ const RecordPage: React.FC = () => {
     });
   };
 
+  const handleSelectHistory = (cycle: CycleArchive) => {
+    setSelectedHistoryIdx(cycle.index);
+  };
+
   return (
     <View className={styles.container}>
       <View className={styles.pageHeader}>
         <Text className={styles.pageTitle}>备孕记录</Text>
         <Text className={styles.pageDesc}>记录点滴，科学备孕</Text>
+      </View>
+
+      <View className={styles.cycleTabsRow}>
+        <View className={styles.cycleTabs}>
+          <View
+            className={classnames(styles.cycleTab, viewMode === 'current' && styles.cycleTabActive)}
+            onClick={() => { setViewMode('current'); setSelectedHistoryIdx(null); setFilter('all'); }}
+          >
+            当前周期
+          </View>
+          <View
+            className={classnames(styles.cycleTab, viewMode === 'history' && styles.cycleTabActive)}
+            onClick={() => setViewMode('history')}
+          >
+            历史
+          </View>
+        </View>
+      </View>
+
+      {viewMode === 'history' && (
+        <View className={styles.historyPicker}>
+          {historyCycles.length === 0 ? (
+            <View className={styles.emptyHistoryInline}>
+              <Text className={styles.emptyHistoryInlineText}>暂无历史周期记录</Text>
+            </View>
+          ) : (
+            <View className={styles.historyChips}>
+              {historyCycles.map(cycle => (
+                <View
+                  key={cycle.index}
+                  className={classnames(
+                    styles.historyChip,
+                    selectedHistoryIdx === cycle.index && styles.historyChipActive
+                  )}
+                  onClick={() => handleSelectHistory(cycle)}
+                >
+                  第{cycle.index}周期
+                  {cycle.summary.isSkipped && ' · 跳过'}
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
+
+      <View className={styles.cycleInfoBar}>
+        <Text className={styles.cycleInfoText}>
+          {viewMode === 'current' ? `第${currentCycleIndex}周期` : selectedHistoryIdx !== null ? `第${selectedHistoryIdx}周期` : '选择周期'}
+          {' · '}{cycleDateRange.start} ~ {cycleDateRange.end}
+        </Text>
+        <Text className={styles.cycleInfoCount}>{cycleRecords.length} 条记录</Text>
       </View>
 
       <View className={styles.statsRow}>
@@ -127,6 +216,10 @@ const RecordPage: React.FC = () => {
         <View className={styles.statCard}>
           <Text className={styles.statValue}>{stats.medicationCount}</Text>
           <Text className={styles.statLabel}>用药记录</Text>
+        </View>
+        <View className={styles.statCard}>
+          <Text className={styles.statValue}>{stats.symptomCount}</Text>
+          <Text className={styles.statLabel}>身体症状</Text>
         </View>
       </View>
 

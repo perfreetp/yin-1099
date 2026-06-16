@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, Button, Textarea } from '@tarojs/components';
+import { View, Text, Button, Textarea, Input } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
 import dayjs from 'dayjs';
 import classnames from 'classnames';
@@ -12,7 +12,7 @@ import {
   formatDate,
   diffDays
 } from '@/utils/cycle';
-import type { DayInfo, RecordType } from '@/types';
+import type { DayInfo, RecordType, BbtRecord } from '@/types';
 import styles from './index.module.scss';
 
 const WEEKDAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
@@ -24,8 +24,15 @@ const QUICK_TYPES: Array<{ value: RecordType; label: string; icon: string }> = [
   { value: 'period_abnormal', label: '月经异常', icon: '🩸' }
 ];
 
+const EDIT_TYPES: Array<{ value: RecordType; label: string; icon: string }> = [
+  { value: 'intercourse', label: '同房记录', icon: '💕' },
+  { value: 'period_abnormal', label: '月经异常', icon: '🩸' },
+  { value: 'medication', label: '用药情况', icon: '💊' },
+  { value: 'symptom', label: '身体症状', icon: '📝' }
+];
+
 const CalendarPage: React.FC = () => {
-  const { cycleConfig, records, updateCycleConfig, addRecord, deleteRecord } = useApp();
+  const { cycleConfig, records, updateCycleConfig, addRecord, updateRecord, deleteRecord } = useApp();
   const now = dayjs();
   const [year, setYear] = useState(now.year());
   const [month, setMonth] = useState(now.month());
@@ -33,6 +40,12 @@ const CalendarPage: React.FC = () => {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [quickType, setQuickType] = useState<RecordType>('intercourse');
   const [quickNote, setQuickNote] = useState('');
+
+  const [editingRecord, setEditingRecord] = useState<BbtRecord | null>(null);
+  const [editType, setEditType] = useState<RecordType>('intercourse');
+  const [editDate, setEditDate] = useState('');
+  const [editResult, setEditResult] = useState('');
+  const [editNote, setEditNote] = useState('');
 
   useDidShow(() => {
     console.log('[CalendarPage] didShow');
@@ -135,6 +148,48 @@ const CalendarPage: React.FC = () => {
         }
       }
     });
+  };
+
+  const handleEditRecord = (rec: BbtRecord) => {
+    setEditingRecord(rec);
+    setEditType(rec.type);
+    setEditDate(rec.date);
+    setEditResult(rec.result || '');
+    setEditNote(rec.note || '');
+  };
+
+  const handleEditPickDate = async () => {
+    try {
+      const res = await Taro.chooseDate({
+        type: 'date',
+        begin: dayjs().subtract(1, 'year').format('YYYY-MM-DD'),
+        end: dayjs().add(1, 'year').format('YYYY-MM-DD'),
+        value: editDate
+      });
+      if (res && res.value) {
+        setEditDate(res.value);
+      }
+    } catch (err) {
+      console.error('[CalendarPage] edit chooseDate error:', err);
+    }
+  };
+
+  const handleEditSave = () => {
+    if (!editingRecord) return;
+    const typeInfo = EDIT_TYPES.find(t => t.value === editType);
+    updateRecord(editingRecord.id, {
+      type: editType,
+      typeText: typeInfo?.label || '',
+      date: editDate,
+      result: editResult.trim() || undefined,
+      note: editNote.trim() || undefined
+    });
+    Taro.showToast({ title: '已更新', icon: 'success' });
+    setEditingRecord(null);
+  };
+
+  const handleEditCancel = () => {
+    setEditingRecord(null);
   };
 
   const getPhaseTagStyle = (phase: string) => {
@@ -284,11 +339,19 @@ const CalendarPage: React.FC = () => {
                     {rec.result && <Text className={styles.dayRecordResult}>{rec.result}</Text>}
                     {rec.note && <Text className={styles.dayRecordNote}>{rec.note}</Text>}
                   </View>
-                  <View
-                    className={styles.deleteRecordBtn}
-                    onClick={() => handleDeleteRecord(rec.id)}
-                  >
-                    <Text className={styles.deleteRecordText}>删除</Text>
+                  <View className={styles.dayRecordActions}>
+                    <View
+                      className={styles.editRecordBtn}
+                      onClick={() => handleEditRecord(rec)}
+                    >
+                      <Text className={styles.editRecordText}>编辑</Text>
+                    </View>
+                    <View
+                      className={styles.deleteRecordBtn}
+                      onClick={() => handleDeleteRecord(rec.id)}
+                    >
+                      <Text className={styles.deleteRecordText}>删除</Text>
+                    </View>
                   </View>
                 </View>
               ))}
@@ -395,6 +458,69 @@ const CalendarPage: React.FC = () => {
           </Text>
         </View>
       </View>
+
+      {editingRecord && (
+        <View className={styles.editModalMask} onClick={handleEditCancel}>
+          <View className={styles.editModalContent} onClick={(e) => e.stopPropagation()}>
+            <View className={styles.editModalHeader}>
+              <Text className={styles.editModalTitle}>编辑记录</Text>
+              <View className={styles.editModalClose} onClick={handleEditCancel}>×</View>
+            </View>
+
+            <View className={styles.editTypeGrid}>
+              {EDIT_TYPES.map(item => (
+                <View
+                  key={item.value}
+                  className={classnames(styles.editTypeCard, editType === item.value && styles.editTypeActive)}
+                  onClick={() => setEditType(item.value)}
+                >
+                  <Text>{item.icon} {item.label}</Text>
+                </View>
+              ))}
+            </View>
+
+            <View className={styles.editFormGroup}>
+              <Text className={styles.editFormLabel}>日期</Text>
+              <View className={styles.editDatePickerBox} onClick={handleEditPickDate}>
+                <Text className={styles.editDateValue}>{editDate}</Text>
+                <Text className={styles.editDateHint}>点击选择 ›</Text>
+              </View>
+            </View>
+
+            <View className={styles.editFormGroup}>
+              <Text className={styles.editFormLabel}>结果（可选）</Text>
+              <Input
+                className={styles.editFormInput}
+                placeholder='如：正常 / 排卵试纸阳性'
+                value={editResult}
+                onInput={(e) => setEditResult(e.detail.value)}
+                maxlength={50}
+              />
+            </View>
+
+            <View className={styles.editFormGroup}>
+              <Text className={styles.editFormLabel}>备注（可选）</Text>
+              <Textarea
+                className={styles.editFormTextarea}
+                placeholder='身体感受、特殊情况...'
+                value={editNote}
+                onInput={(e) => setEditNote(e.detail.value)}
+                maxlength={200}
+                autoHeight
+              />
+            </View>
+
+            <View className={styles.editModalActions}>
+              <View className={styles.editCancelBtn} onClick={handleEditCancel}>
+                取消
+              </View>
+              <View className={styles.editConfirmBtn} onClick={handleEditSave}>
+                保存修改
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 };

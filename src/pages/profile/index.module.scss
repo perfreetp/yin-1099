@@ -498,6 +498,77 @@
   border: 2rpx solid $color-primary-light;
 }
 
+.trendCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-md;
+  margin-bottom: $spacing-sm;
+}
+
+.trendHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-sm;
+}
+
+.trendHeaderLabel {
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.trendAvg {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.trendBars {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+}
+
+.trendBarWrap {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.trendBarLabel {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  width: 56rpx;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.trendBarTrack {
+  flex: 1;
+  height: 20rpx;
+  background: $color-divider;
+  border-radius: $radius-round;
+  overflow: hidden;
+}
+
+.trendBarFill {
+  height: 100%;
+  border-radius: $radius-round;
+  transition: width $transition-base ease;
+  min-width: 4rpx;
+}
+
+.trendBarFillSkipped {
+  opacity: 0.4;
+}
+
+.trendBarValue {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  width: 56rpx;
+  flex-shrink: 0;
+}
+
 .privacyCard {
   background: linear-gradient(135deg, #FAF7FF 0%, #FFF5F7 100%);
   border-radius: $radius-lg;

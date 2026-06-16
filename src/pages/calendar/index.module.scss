@@ -291,9 +291,24 @@
   display: block;
 }
 
-.deleteRecordBtn {
-  padding: 8rpx 16rpx;
+.dayRecordActions {
+  display: flex;
+  gap: 4rpx;
   flex-shrink: 0;
+  align-items: flex-start;
+}
+
+.editRecordBtn {
+  padding: 8rpx 12rpx;
+}
+
+.editRecordText {
+  font-size: $font-size-xs;
+  color: $color-primary-dark;
+}
+
+.deleteRecordBtn {
+  padding: 8rpx 12rpx;
 }
 
 .deleteRecordText {
@@ -393,4 +408,168 @@
   color: white;
   background: $color-primary;
   font-weight: $font-weight-medium;
+}
+
+.editModalMask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(61, 51, 56, 0.5);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.editModalContent {
+  width: 90%;
+  max-width: 680rpx;
+  background: $color-bg-page;
+  border-radius: $radius-xl;
+  padding: $spacing-lg $spacing-lg $spacing-xl;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.editModalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-lg;
+}
+
+.editModalTitle {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.editModalClose {
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: $font-size-xxl;
+  color: $color-text-tertiary;
+  background: $color-bg-hover;
+  border-radius: $radius-round;
+}
+
+.editTypeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $spacing-sm;
+  margin-bottom: $spacing-lg;
+}
+
+.editTypeCard {
+  padding: $spacing-sm $spacing-md;
+  border-radius: $radius-md;
+  background: $color-bg-card;
+  border: 2rpx solid transparent;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  text-align: center;
+  transition: all $transition-fast;
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+.editTypeActive {
+  border-color: $color-primary-dark;
+  background: $color-primary-bg;
+  font-weight: $font-weight-medium;
+}
+
+.editFormGroup {
+  margin-bottom: $spacing-md;
+}
+
+.editFormLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+  margin-bottom: $spacing-xs;
+  display: block;
+}
+
+.editDatePickerBox {
+  height: $button-height-md;
+  background: $color-bg-card;
+  border-radius: $radius-md;
+  padding: 0 $spacing-md;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 2rpx solid $color-border;
+}
+
+.editDateValue {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.editDateHint {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.editFormInput {
+  width: 100%;
+  height: $button-height-md;
+  background: $color-bg-card;
+  border-radius: $radius-md;
+  padding: 0 $spacing-md;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  border: 2rpx solid $color-border;
+  box-sizing: border-box;
+}
+
+.editFormTextarea {
+  width: 100%;
+  min-height: 120rpx;
+  background: $color-bg-card;
+  border-radius: $radius-md;
+  padding: $spacing-md;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  border: 2rpx solid $color-border;
+  box-sizing: border-box;
+  line-height: 1.6;
+}
+
+.editModalActions {
+  display: flex;
+  gap: $spacing-md;
+  margin-top: $spacing-lg;
+}
+
+.editCancelBtn {
+  @include button-reset;
+  flex: 1;
+  height: $button-height-lg;
+  border-radius: $radius-button;
+  background: $color-bg-card;
+  color: $color-text-secondary;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  border: 2rpx solid $color-border;
+}
+
+.editConfirmBtn {
+  @include button-reset;
+  flex: 2;
+  height: $button-height-lg;
+  border-radius: $radius-button;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-dark 100%);
+  color: $color-text-white;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
 }

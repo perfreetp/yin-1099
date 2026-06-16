@@ -60,6 +60,7 @@ interface AppContextType extends AppState {
   updateCycleConfig: (config: Partial<CycleConfig>) => void;
   updateReminderConfig: (config: Partial<ReminderConfig>) => void;
   addRecord: (record: Omit<BbtRecord, 'id' | 'createdAt'>) => void;
+  updateRecord: (id: string, updates: Partial<Omit<BbtRecord, 'id' | 'createdAt'>>) => void;
   deleteRecord: (id: string) => void;
   toggleTodo: (id: string) => void;
   skipCurrentCycle: (reason?: string) => void;
@@ -150,6 +151,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setRecords(prev => {
       console.log('[AppContext] deleteRecord:', id);
       return prev.filter(r => r.id !== id);
+    });
+  }, []);
+
+  const updateRecord = useCallback((id: string, updates: Partial<Omit<BbtRecord, 'id' | 'createdAt'>>) => {
+    setRecords(prev => {
+      console.log('[AppContext] updateRecord:', id, updates);
+      return prev.map(r => r.id === id ? { ...r, ...updates } : r);
     });
   }, []);
 
@@ -389,6 +397,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     updateCycleConfig,
     updateReminderConfig,
     addRecord,
+    updateRecord,
     deleteRecord,
     toggleTodo,
     skipCurrentCycle,
