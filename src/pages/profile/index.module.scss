@@ -1,0 +1,266 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  background-color: $color-bg-page;
+  padding: $spacing-md $page-padding $spacing-xl;
+}
+
+.profileHeader {
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-dark 100%);
+  border-radius: $radius-xl;
+  padding: $spacing-xl $spacing-lg;
+  margin-bottom: $spacing-md;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8rpx 24rpx rgba(212, 133, 156, 0.25);
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -100rpx;
+    right: -60rpx;
+    width: 300rpx;
+    height: 300rpx;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -80rpx;
+    left: -40rpx;
+    width: 200rpx;
+    height: 200rpx;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.profileGreeting {
+  position: relative;
+  z-index: 1;
+  margin-bottom: $spacing-lg;
+}
+
+.greetingText {
+  font-size: $font-size-lg;
+  color: rgba(255, 255, 255, 0.9);
+  display: block;
+  margin-bottom: $spacing-xs;
+}
+
+.greetingName {
+  font-size: 48rpx;
+  color: $color-text-white;
+  font-weight: $font-weight-bold;
+  line-height: 1.2;
+  display: block;
+}
+
+.progressCard {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: $radius-lg;
+  padding: $spacing-md;
+  position: relative;
+  z-index: 1;
+  backdrop-filter: blur(10px);
+}
+
+.progressTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-sm;
+}
+
+.progressLabel {
+  font-size: $font-size-sm;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: $font-weight-medium;
+}
+
+.progressValue {
+  font-size: $font-size-lg;
+  color: $color-text-white;
+  font-weight: $font-weight-bold;
+}
+
+.progressBar {
+  height: 16rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: $radius-round;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: $color-text-white;
+  border-radius: $radius-round;
+  transition: width $transition-base ease;
+}
+
+.summaryCards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $spacing-sm;
+  margin-bottom: $spacing-md;
+}
+
+.summaryCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-md;
+  box-shadow: 0 2rpx 12rpx rgba(212, 133, 156, 0.06);
+}
+
+.summaryIcon {
+  font-size: 36rpx;
+  display: block;
+  margin-bottom: $spacing-sm;
+}
+
+.summaryValue {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  line-height: 1.2;
+  display: block;
+  margin-bottom: 4rpx;
+}
+
+.summaryLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  line-height: 1.4;
+  display: block;
+}
+
+.section {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-md $spacing-sm;
+  margin-bottom: $spacing-md;
+  box-shadow: 0 2rpx 12rpx rgba(212, 133, 156, 0.06);
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: $spacing-xs $spacing-sm $spacing-md;
+}
+
+.sectionTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  display: flex;
+  align-items: center;
+
+  &::before {
+    content: '';
+    width: 6rpx;
+    height: 28rpx;
+    background: $color-primary;
+    border-radius: $radius-sm;
+    margin-right: $spacing-sm;
+  }
+}
+
+.sectionCount {
+  font-size: $font-size-sm;
+  color: $color-primary-dark;
+  background: $color-primary-bg;
+  padding: 4rpx $spacing-sm;
+  border-radius: $radius-round;
+  font-weight: $font-weight-medium;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  padding: $spacing-md $spacing-sm;
+  border-top: 2rpx solid $color-divider;
+  transition: all $transition-fast;
+
+  &:active {
+    background: $color-bg-hover;
+  }
+}
+
+.menuIconBox {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: $radius-md;
+  background: $color-primary-bg;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: $spacing-md;
+  flex-shrink: 0;
+}
+
+.menuIcon {
+  font-size: 32rpx;
+}
+
+.menuContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.menuTitle {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+  display: block;
+}
+
+.menuDesc {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: 4rpx;
+  display: block;
+  line-height: 1.3;
+}
+
+.menuArrow {
+  font-size: $font-size-xl;
+  color: $color-text-tertiary;
+  font-weight: $font-weight-light;
+  margin-left: $spacing-sm;
+  flex-shrink: 0;
+}
+
+.privacyCard {
+  background: linear-gradient(135deg, #FAF7FF 0%, #FFF5F7 100%);
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+  border: 2rpx solid $color-primary-light;
+}
+
+.privacyTitle {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-semibold;
+  display: block;
+  margin-bottom: $spacing-sm;
+}
+
+.privacyDesc {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: 1.6;
+  display: block;
+}
+
+.footerText {
+  text-align: center;
+  font-size: $font-size-xs;
+  color: $color-text-disabled;
+  padding: $spacing-lg 0;
+  line-height: 1.6;
+}

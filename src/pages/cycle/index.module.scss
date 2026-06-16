@@ -1,0 +1,275 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  background-color: $color-bg-page;
+  padding: $spacing-md $page-padding $spacing-xl;
+}
+
+.pageHeader {
+  padding: $spacing-sm 0 $spacing-md;
+}
+
+.pageTitle {
+  font-size: 44rpx;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  line-height: 1.2;
+  display: block;
+}
+
+.pageSubtitle {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-top: $spacing-xs;
+  display: block;
+}
+
+.formCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+  box-shadow: 0 2rpx 12rpx rgba(212, 133, 156, 0.08);
+}
+
+.formCardTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-lg;
+  display: flex;
+  align-items: center;
+
+  &::before {
+    content: '';
+    width: 6rpx;
+    height: 28rpx;
+    background: $color-primary;
+    border-radius: $radius-sm;
+    margin-right: $spacing-sm;
+  }
+}
+
+.formItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-md 0;
+  border-bottom: 2rpx solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.formLabel {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+  flex-shrink: 0;
+}
+
+.formValue {
+  display: flex;
+  align-items: center;
+  color: $color-text-secondary;
+}
+
+.dateDisplay {
+  font-size: $font-size-md;
+  color: $color-primary-dark;
+  font-weight: $font-weight-medium;
+  padding: $spacing-sm $spacing-md;
+  background: $color-primary-bg;
+  border-radius: $radius-md;
+  min-width: 200rpx;
+  text-align: center;
+}
+
+.numberStepper {
+  display: flex;
+  align-items: center;
+  background: $color-bg-hover;
+  border-radius: $radius-md;
+  overflow: hidden;
+}
+
+.stepBtn {
+  width: 72rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: $font-size-lg;
+  color: $color-primary-dark;
+  background: transparent;
+  transition: all $transition-fast;
+
+  &:active {
+    background: $color-primary-light;
+  }
+}
+
+.stepValue {
+  min-width: 80rpx;
+  text-align: center;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.stepUnit {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-left: $spacing-xs;
+}
+
+.switchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-md 0;
+  border-bottom: 2rpx solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.switchLabel {
+  flex: 1;
+}
+
+.switchTitle {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+  display: block;
+}
+
+.switchDesc {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-top: $spacing-xs;
+  display: block;
+}
+
+.timelineCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+  box-shadow: 0 2rpx 12rpx rgba(212, 133, 156, 0.08);
+}
+
+.timelineTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-lg;
+  display: flex;
+  align-items: center;
+
+  &::before {
+    content: '';
+    width: 6rpx;
+    height: 28rpx;
+    background: $color-primary;
+    border-radius: $radius-sm;
+    margin-right: $spacing-sm;
+  }
+}
+
+.timeline {
+  position: relative;
+  padding: $spacing-sm 0;
+}
+
+.timelineBar {
+  height: 16rpx;
+  border-radius: $radius-round;
+  display: flex;
+  overflow: hidden;
+  margin-bottom: $spacing-lg;
+}
+
+.timelineSegment {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20rpx;
+  color: $color-text-white;
+  font-weight: $font-weight-medium;
+  transition: all $transition-base;
+}
+
+.timelineLabels {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+}
+
+.timelineLabelItem {
+  flex: 1;
+  text-align: center;
+
+  &:first-child {
+    text-align: left;
+  }
+
+  &:last-child {
+    text-align: right;
+  }
+}
+
+.timelineLabelName {
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+  display: block;
+}
+
+.timelineLabelDate {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: 4rpx;
+  display: block;
+}
+
+.actionButtons {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  padding-top: $spacing-sm;
+}
+
+.skipButton {
+  @include button-reset;
+  height: $button-height-md;
+  border-radius: $radius-button;
+  background: $color-bg-card;
+  color: $color-text-tertiary;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  border: 2rpx solid $color-border;
+  transition: all $transition-base;
+
+  &:active {
+    background: $color-bg-hover;
+    opacity: 0.9;
+  }
+}
+
+.skippedTag {
+  display: inline-flex;
+  align-items: center;
+  padding: $spacing-xs $spacing-md;
+  background: rgba(176, 162, 168, 0.15);
+  color: $color-text-secondary;
+  border-radius: $radius-round;
+  font-size: $font-size-xs;
+  margin-left: $spacing-sm;
+  font-weight: $font-weight-normal;
+}

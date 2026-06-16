@@ -1,0 +1,115 @@
+@use '@/styles/variables.scss' as *;
+
+.recordCard {
+  display: flex;
+  align-items: stretch;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-md;
+  margin-bottom: $spacing-sm;
+  box-shadow: 0 2rpx 12rpx rgba(212, 133, 156, 0.06);
+  transition: all $transition-fast;
+  position: relative;
+
+  &:active {
+    background: $color-bg-hover;
+    transform: scale(0.995);
+  }
+}
+
+.recordLeft {
+  flex-shrink: 0;
+  margin-right: $spacing-md;
+}
+
+.iconBox {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: $radius-md;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.iconText {
+  font-size: 36rpx;
+}
+
+.recordContent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.recordHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-xs;
+}
+
+.recordType {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+}
+
+.recordTime {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.recordDateRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-xs;
+}
+
+.recordDate {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+}
+
+.resultTag {
+  padding: 4rpx 12rpx;
+  border-radius: $radius-sm;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+}
+
+.recordNote {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: 1.5;
+  margin-top: $spacing-xs;
+  display: block;
+  word-break: break-all;
+}
+
+.deleteBtn {
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  align-self: center;
+  margin-left: $spacing-sm;
+  border-radius: $radius-round;
+  background: $color-bg-hover;
+  transition: all $transition-fast;
+
+  &:active {
+    background: $color-period-light;
+    transform: scale(0.9);
+  }
+}
+
+.deleteIcon {
+  font-size: $font-size-lg;
+  color: $color-text-tertiary;
+  font-weight: $font-weight-light;
+  line-height: 1;
+}

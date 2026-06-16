@@ -1,0 +1,233 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  background-color: $color-bg-page;
+  padding: $spacing-md $page-padding $spacing-xl;
+}
+
+.monthNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-sm 0 $spacing-md;
+  margin-bottom: $spacing-sm;
+}
+
+.monthNavBtn {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: $radius-round;
+  background: $color-bg-card;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: $font-size-lg;
+  color: $color-primary-dark;
+  box-shadow: 0 2rpx 8rpx rgba(212, 133, 156, 0.1);
+  transition: all $transition-fast;
+
+  &:active {
+    transform: scale(0.95);
+    background: $color-primary-bg;
+  }
+}
+
+.monthLabel {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.flexColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.legend {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-md $spacing-lg;
+  margin-bottom: $spacing-md;
+  box-shadow: 0 2rpx 12rpx rgba(212, 133, 156, 0.08);
+}
+
+.legendTitle {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-md;
+  font-weight: $font-weight-medium;
+}
+
+.legendGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $spacing-md;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+}
+
+.legendColor {
+  width: 32rpx;
+  height: 32rpx;
+  border-radius: $radius-sm;
+  margin-right: $spacing-sm;
+  flex-shrink: 0;
+
+  &.colorPeriod {
+    background: $color-period-light;
+    border: 2rpx solid $color-period;
+  }
+
+  &.colorStart {
+    background: $color-window-start-light;
+    border: 2rpx solid $color-window-start;
+  }
+
+  &.colorPeak {
+    background: linear-gradient(135deg, $color-window-peak 0%, #FFB3B7 100%);
+  }
+
+  &.colorEnd {
+    background: $color-window-end-light;
+    border: 2rpx solid $color-window-end;
+  }
+
+  &.colorToday {
+    background: $color-primary-bg;
+    border: 2rpx solid $color-primary-dark;
+  }
+
+  &.colorOvulation {
+    background: linear-gradient(135deg, $color-window-peak 0%, #FFB3B7 100%);
+  }
+}
+
+.legendLabel {
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+}
+
+.selectedDayCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  margin-top: $spacing-md;
+  box-shadow: 0 2rpx 12rpx rgba(212, 133, 156, 0.08);
+  border-left: 8rpx solid $color-primary;
+}
+
+.selectedHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: $spacing-md;
+}
+
+.selectedDate {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.selectedWeekday {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-top: $spacing-xs;
+  display: block;
+}
+
+.selectedPhaseTag {
+  padding: $spacing-xs $spacing-sm;
+  border-radius: $radius-round;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+}
+
+.selectedInfoRow {
+  display: flex;
+  justify-content: space-between;
+  padding: $spacing-sm 0;
+  border-top: 2rpx solid $color-divider;
+
+  &:first-of-type {
+    border-top: none;
+  }
+}
+
+.selectedInfoLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.selectedInfoValue {
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.windowSummary {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  margin-top: $spacing-md;
+  box-shadow: 0 2rpx 12rpx rgba(212, 133, 156, 0.08);
+}
+
+.windowSummaryTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+  display: flex;
+  align-items: center;
+
+  &::before {
+    content: '';
+    width: 6rpx;
+    height: 28rpx;
+    background: $color-primary;
+    border-radius: $radius-sm;
+    margin-right: $spacing-sm;
+  }
+}
+
+.windowPhaseRow {
+  display: flex;
+  align-items: center;
+  padding: $spacing-sm 0;
+  border-bottom: 2rpx solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.windowPhaseDot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  margin-right: $spacing-md;
+  flex-shrink: 0;
+
+  &.dotStart { background: $color-window-start; }
+  &.dotPeak { background: $color-window-peak; }
+  &.dotEnd { background: $color-window-end; }
+  &.dotPeriod { background: $color-period; }
+}
+
+.windowPhaseName {
+  flex: 1;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.windowPhaseRange {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}

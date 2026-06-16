@@ -1,0 +1,271 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  background-color: $color-bg-page;
+  padding: $spacing-md $page-padding $spacing-xl;
+}
+
+.pageHeader {
+  padding: $spacing-sm 0 $spacing-lg;
+}
+
+.pageTitle {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  line-height: 1.3;
+  display: block;
+}
+
+.pageDesc {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-top: $spacing-xs;
+  display: block;
+  line-height: 1.5;
+}
+
+.sectionCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-md;
+  margin-bottom: $spacing-md;
+  box-shadow: 0 2rpx 12rpx rgba(212, 133, 156, 0.08);
+}
+
+.sectionLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+  padding: $spacing-sm $spacing-sm $spacing-md;
+  display: block;
+}
+
+.switchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-md $spacing-sm;
+  border-bottom: 2rpx solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.switchContent {
+  flex: 1;
+}
+
+.switchTitle {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+  display: block;
+}
+
+.switchDesc {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-top: $spacing-xs;
+  display: block;
+  line-height: 1.4;
+}
+
+.timePicker {
+  display: flex;
+  align-items: center;
+  background: $color-bg-hover;
+  padding: $spacing-sm $spacing-md;
+  border-radius: $radius-md;
+  margin-left: $spacing-md;
+  transition: all $transition-fast;
+
+  &:active {
+    background: $color-primary-light;
+  }
+}
+
+.timeText {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-primary-dark;
+  letter-spacing: 2rpx;
+}
+
+.timeUnit {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-left: $spacing-xs;
+}
+
+.optionsGroup {
+  padding: $spacing-xs $spacing-sm;
+}
+
+.optionItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-md 0;
+  border-bottom: 2rpx solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.optionLabel {
+  flex: 1;
+}
+
+.optionTitle {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+  display: block;
+}
+
+.optionDesc {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-top: $spacing-xs;
+  display: block;
+  line-height: 1.4;
+}
+
+.radioBox {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  border: 3rpx solid $color-border;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all $transition-fast;
+
+  &.checked {
+    border-color: $color-primary-dark;
+  }
+}
+
+.radioInner {
+  width: 20rpx;
+  height: 20rpx;
+  border-radius: 50%;
+  background: $color-primary-dark;
+  transform: scale(0);
+  transition: transform $transition-fast;
+
+  .checked & {
+    transform: scale(1);
+  }
+}
+
+.intensityOptions {
+  display: flex;
+  gap: $spacing-sm;
+  margin-top: $spacing-sm;
+}
+
+.intensityOption {
+  flex: 1;
+  padding: $spacing-md $spacing-sm;
+  border-radius: $radius-md;
+  border: 3rpx solid $color-border;
+  text-align: center;
+  transition: all $transition-fast;
+  cursor: pointer;
+
+  &.active {
+    border-color: $color-primary-dark;
+    background: $color-primary-bg;
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+.intensityOptionTitle {
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  font-weight: $font-weight-semibold;
+  display: block;
+  margin-bottom: $spacing-xs;
+}
+
+.intensityOptionDesc {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  line-height: 1.3;
+  display: block;
+}
+
+.previewCard {
+  background: linear-gradient(135deg, $color-primary-bg 0%, #FFFFFF 100%);
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  margin-top: $spacing-md;
+  border: 2rpx solid $color-primary-light;
+}
+
+.previewLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-bottom: $spacing-sm;
+  display: block;
+}
+
+.previewContent {
+  display: flex;
+  align-items: center;
+}
+
+.previewIcon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: $radius-md;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-dark 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  color: $color-text-white;
+  margin-right: $spacing-md;
+  flex-shrink: 0;
+}
+
+.previewTextWrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.previewTitle {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-semibold;
+  display: block;
+  line-height: 1.4;
+}
+
+.previewDesc {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-top: $spacing-xs;
+  display: block;
+  line-height: 1.4;
+}
+
+.timeRangeTag {
+  display: inline-flex;
+  align-items: center;
+  padding: $spacing-xs $spacing-sm;
+  background: rgba(232, 165, 184, 0.15);
+  color: $color-primary-dark;
+  border-radius: $radius-round;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  margin-top: $spacing-sm;
+}
