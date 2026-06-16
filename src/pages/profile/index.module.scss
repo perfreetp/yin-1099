@@ -234,6 +234,36 @@
   flex-shrink: 0;
 }
 
+.miniBar {
+  width: 80rpx;
+  height: 12rpx;
+  background: $color-divider;
+  border-radius: $radius-round;
+  margin-left: $spacing-sm;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.miniBarFill {
+  height: 100%;
+  border-radius: $radius-round;
+  transition: width $transition-base ease;
+}
+
+.reviewNote {
+  margin: $spacing-md $spacing-sm 0;
+  padding: $spacing-md;
+  background: $color-primary-bg;
+  border-radius: $radius-lg;
+  border-left: 6rpx solid $color-primary;
+}
+
+.reviewNoteText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: 1.6;
+}
+
 .privacyCard {
   background: linear-gradient(135deg, #FAF7FF 0%, #FFF5F7 100%);
   border-radius: $radius-lg;

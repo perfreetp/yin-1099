@@ -2,47 +2,42 @@ import React, { useState } from 'react';
 import { View, Text, Switch, Button } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
 import classnames from 'classnames';
-import { useApp } from '@/store/AppContext';
+import { useApp, ReminderResult } from '@/store/AppContext';
 import { getDaysUntilOvulation, getOvulationDate, getTodayInfo, formatDate } from '@/utils/cycle';
 import styles from './index.module.scss';
 
 const ReminderPage: React.FC = () => {
-  const { reminderConfig, updateReminderConfig, cycleConfig, records, requestNotificationAuth, checkAndSendReminder } = useApp();
-  const [authStatus, setAuthStatus] = useState<'unknown' | 'authorized' | 'denied'>('unknown');
+  const {
+    reminderConfig, updateReminderConfig, cycleConfig, records,
+    requestNotificationAuth, evalReminder, getNotificationEnvStatus
+  } = useApp();
+
+  const [authResult, setAuthResult] = useState<{ success: boolean; isEnvironmentSupported: boolean; message: string } | null>(null);
+  const [lastTestResult, setLastTestResult] = useState<ReminderResult | null>(null);
 
   useDidShow(() => {
-    console.log('[ReminderPage] didShow');
-    checkNotificationAuth();
+    checkEnv();
   });
 
-  const checkNotificationAuth = async () => {
-    try {
-      const setting = await Taro.getSetting();
-      const authorized = setting.authSetting['scope.subscribeMessage'] || setting.authSetting['scope.notification'] || false;
-      setAuthStatus(authorized ? 'authorized' : 'denied');
-      console.log('[ReminderPage] authStatus:', authorized ? 'authorized' : 'denied');
-    } catch (err) {
-      console.error('[ReminderPage] checkAuth error:', err);
-      setAuthStatus('unknown');
+  const checkEnv = () => {
+    const env = getNotificationEnvStatus();
+    if (env === 'h5') {
+      setAuthResult({ success: false, isEnvironmentSupported: false, message: '当前为网页预览环境，不支持微信订阅消息推送。' });
+    } else if (env === 'unknown') {
+      setAuthResult({ success: false, isEnvironmentSupported: false, message: '当前环境无法识别，可能不支持订阅消息。' });
     }
   };
 
   const handleRequestAuth = async () => {
-    try {
-      await requestNotificationAuth();
-      setAuthStatus('authorized');
-      Taro.showToast({ title: '授权成功', icon: 'success' });
-    } catch (err) {
-      console.error('[ReminderPage] requestAuth error:', err);
-      setAuthStatus('denied');
-      Taro.showModal({
-        title: '需要通知权限',
-        content: '请在系统设置中开启本应用的通知权限，以便接收备孕提醒。您也可以稍后在系统设置中手动开启。',
-        showCancel: false,
-        confirmText: '我知道了',
-        confirmColor: '#D4859C'
-      });
-    }
+    const result = await requestNotificationAuth();
+    setAuthResult(result);
+    Taro.showModal({
+      title: result.success ? '授权成功' : result.isEnvironmentSupported ? '授权未完成' : '环境不支持',
+      content: result.message,
+      showCancel: false,
+      confirmText: '我知道了',
+      confirmColor: '#D4859C'
+    });
   };
 
   const handlePickTime = async (field: 'femaleTime' | 'maleTime') => {
@@ -60,23 +55,54 @@ const ReminderPage: React.FC = () => {
   };
 
   const handleTestReminder = () => {
-    checkAndSendReminder();
+    const result = evalReminder();
+    setLastTestResult(result);
+
+    if (result.shouldRemind) {
+      let msg = `【本地预览】提醒内容：${result.reason}`;
+      msg += `\n\n女方 ${result.femaleNotified ? '✓ 会收到' : '✗ 不会收到'}（${result.femaleTime}）`;
+      msg += `\n男方 ${result.maleNotified ? '✓ 会收到' : '✗ 不会收到'}（${result.maleTime}）`;
+
+      if (reminderConfig.vibrate) {
+        Taro.vibrateShort();
+      }
+
+      Taro.showModal({
+        title: '🔔 提醒预览结果',
+        content: msg,
+        showCancel: false,
+        confirmText: '知道了',
+        confirmColor: '#D4859C'
+      });
+    } else {
+      Taro.showModal({
+        title: '🔕 今日不会触发提醒',
+        content: `原因：${result.reason}`,
+        showCancel: false,
+        confirmText: '知道了',
+        confirmColor: '#D4859C'
+      });
+    }
   };
 
   const daysUntil = getDaysUntilOvulation(cycleConfig);
   const ovuDate = getOvulationDate(cycleConfig);
   const todayInfo = getTodayInfo(cycleConfig, records);
+  const reminderEval = evalReminder();
+  const envStatus = getNotificationEnvStatus();
 
-  const getAuthText = () => {
-    if (authStatus === 'authorized') return '✓ 已授权通知';
-    if (authStatus === 'denied') return '✗ 通知未授权';
-    return '未检测到授权状态';
+  const getEnvText = () => {
+    if (authResult && !authResult.isEnvironmentSupported) return '当前环境不支持订阅通知';
+    if (authResult && authResult.success) return '✓ 已授权，可正常推送';
+    if (envStatus === 'h5') return '网页预览环境，无法订阅';
+    if (envStatus === 'unknown') return '环境未识别，无法订阅';
+    return '尚未授权';
   };
 
-  const getAuthColor = () => {
-    if (authStatus === 'authorized') return '#7EC8A3';
-    if (authStatus === 'denied') return '#D9534F';
-    return '#B0A2A8';
+  const getEnvColor = () => {
+    if (authResult && authResult.success) return '#7EC8A3';
+    if (authResult && !authResult.isEnvironmentSupported) return '#D99660';
+    return '#D9534F';
   };
 
   return (
@@ -89,28 +115,35 @@ const ReminderPage: React.FC = () => {
       </View>
 
       <View className={styles.sectionCard}>
-        <Text className={styles.sectionLabel}>通知授权</Text>
+        <Text className={styles.sectionLabel}>通知环境</Text>
         <View className={styles.switchRow}>
           <View className={styles.switchContent}>
-            <Text className={styles.switchTitle}>通知权限状态</Text>
-            <Text className={styles.switchDesc} style={{ color: getAuthColor() }}>
-              {getAuthText()}
+            <Text className={styles.switchTitle}>订阅消息状态</Text>
+            <Text className={styles.switchDesc} style={{ color: getEnvColor() }}>
+              {getEnvText()}
             </Text>
           </View>
-          {authStatus !== 'authorized' && (
+          {!authResult?.success && (
             <Button
               className='primaryButton'
               style={{ height: '64rpx', fontSize: '24rpx', padding: '0 24rpx', borderRadius: '32rpx' }}
               onClick={handleRequestAuth}
             >
-              去授权
+              {envStatus === 'miniapp' ? '去授权' : '查看详情'}
             </Button>
           )}
         </View>
-        {authStatus === 'denied' && (
+        {authResult && !authResult.isEnvironmentSupported && (
           <View style={{ padding: '16rpx 16rpx 8rpx' }}>
             <Text style={{ fontSize: '22rpx', color: '#B0A2A8', lineHeight: 1.5 }}>
-              如无法弹出授权窗口，请前往手机「设置 → 应用管理」中找到本应用，手动开启通知权限。
+              当前运行在网页/开发环境，微信订阅消息仅在真实小程序中可用。发布到微信小程序后即可正常订阅。
+            </Text>
+          </View>
+        )}
+        {authResult && authResult.isEnvironmentSupported && !authResult.success && (
+          <View style={{ padding: '16rpx 16rpx 8rpx' }}>
+            <Text style={{ fontSize: '22rpx', color: '#B0A2A8', lineHeight: 1.5 }}>
+              如需接收推送，请在微信中长按小程序 → 设置 → 订阅消息中手动开启。
             </Text>
           </View>
         )}
@@ -141,7 +174,9 @@ const ReminderPage: React.FC = () => {
         <View className={styles.switchRow}>
           <View className={styles.switchContent}>
             <Text className={styles.switchTitle}>女方提醒</Text>
-            <Text className={styles.switchDesc}>主通知，附带身体状态建议</Text>
+            <Text className={styles.switchDesc}>
+              {reminderConfig.notifyFemale ? `每天 ${reminderConfig.femaleTime} 推送` : '已关闭'}
+            </Text>
           </View>
           <View className='flexRow'>
             <View
@@ -162,7 +197,9 @@ const ReminderPage: React.FC = () => {
         <View className={styles.switchRow}>
           <View className={styles.switchContent}>
             <Text className={styles.switchTitle}>男方提醒</Text>
-            <Text className={styles.switchDesc}>错开时间，避免打扰</Text>
+            <Text className={styles.switchDesc}>
+              {reminderConfig.notifyMale ? `每天 ${reminderConfig.maleTime} 推送` : '已关闭'}
+            </Text>
           </View>
           <View className='flexRow'>
             <View
@@ -188,7 +225,7 @@ const ReminderPage: React.FC = () => {
           <View className={styles.optionItem} onClick={() => updateReminderConfig({ intensity: 'all' })}>
             <View className={styles.optionLabel}>
               <Text className={styles.optionTitle}>全部时段</Text>
-              <Text className={styles.optionDesc}>易孕期7天内每天提醒，不遗漏机会</Text>
+              <Text className={styles.optionDesc}>易孕期9天内每天提醒，不遗漏机会</Text>
             </View>
             <View className={classnames(styles.radioBox, reminderConfig.intensity === 'all' && styles.checked)}>
               <View className={styles.radioInner} />
@@ -219,7 +256,6 @@ const ReminderPage: React.FC = () => {
 
       <View className={styles.sectionCard}>
         <Text className={styles.sectionLabel}>提示方式</Text>
-
         <View className={styles.switchRow}>
           <View className={styles.switchContent}>
             <Text className={styles.switchTitle}>震动提醒</Text>
@@ -236,29 +272,33 @@ const ReminderPage: React.FC = () => {
       {reminderConfig.enabled && (
         <>
           <View className={styles.previewCard}>
-            <Text className={styles.previewLabel}>今日提醒预览</Text>
+            <Text className={styles.previewLabel}>
+              今日提醒判定
+              {reminderEval.shouldRemind ? ' · 会提醒' : ' · 不会提醒'}
+            </Text>
             <View className={styles.previewContent}>
               <View className={styles.previewIcon}>
-                {todayInfo.intensity >= 3 ? '💗' : todayInfo.intensity >= 2 ? '🌱' : todayInfo.intensity >= 1 ? '🍂' : '🌙'}
+                {reminderEval.shouldRemind
+                  ? (reminderEval.intensity >= 3 ? '💗' : reminderEval.intensity >= 2 ? '🌱' : '🍂')
+                  : '🔕'}
               </View>
               <View className={styles.previewTextWrap}>
                 <Text className={styles.previewTitle}>
-                  {todayInfo.intensity >= 3
-                    ? todayInfo.isOvulationDay ? '排卵日 · 把握最佳时机' : '重点安排 · 建议今日同房'
-                    : todayInfo.intensity >= 2
-                      ? '开始关注 · 易孕期已到'
-                      : todayInfo.intensity >= 1
-                        ? '临近结束 · 最后机会'
-                        : '今日无需特别安排'}
+                  {reminderEval.shouldRemind ? reminderEval.reason : reminderEval.reason}
                 </Text>
-                <Text className={styles.previewDesc}>
-                  {todayInfo.intensity > 0
-                    ? `${todayInfo.phaseText} · 预计排卵日 ${formatDate(ovuDate, 'M月D日')}`
-                    : `预计排卵日 ${formatDate(ovuDate, 'M月D日')}，距今天 ${Math.max(0, daysUntil)} 天`}
-                </Text>
-                <Text className={styles.timeRangeTag}>
-                  女方 {reminderConfig.femaleTime} · 男方 {reminderConfig.maleTime}
-                </Text>
+                {reminderEval.shouldRemind && (
+                  <>
+                    <Text className={styles.previewDesc}>
+                      {reminderEval.femaleNotified && `女方 ${reminderEval.femaleTime} 推送`}
+                      {reminderEval.femaleNotified && reminderEval.maleNotified && ' · '}
+                      {reminderEval.maleNotified && `男方 ${reminderEval.maleTime} 推送`}
+                      {!reminderEval.femaleNotified && !reminderEval.maleNotified && '未选择接收人'}
+                    </Text>
+                    <Text className={styles.timeRangeTag}>
+                      阶段: {reminderEval.phaseText || '日常'} · 强度: {reminderEval.intensity}
+                    </Text>
+                  </>
+                )}
               </View>
             </View>
           </View>
@@ -269,8 +309,11 @@ const ReminderPage: React.FC = () => {
               style={{ width: '100%' }}
               onClick={handleTestReminder}
             >
-              测试发送今日提醒
+              测试今日提醒（本地预览）
             </Button>
+            <Text style={{ display: 'block', textAlign: 'center', fontSize: '20rpx', color: '#B0A2A8', marginTop: '8rpx' }}>
+              测试仅在本机预览提醒效果，不会发送真实订阅消息
+            </Text>
           </View>
         </>
       )}

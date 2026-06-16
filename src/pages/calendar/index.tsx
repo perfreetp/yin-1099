@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, Button } from '@tarojs/components';
+import { View, Text, Button, Textarea } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
 import dayjs from 'dayjs';
 import classnames from 'classnames';
@@ -12,17 +12,26 @@ import {
   formatDate,
   diffDays
 } from '@/utils/cycle';
-import type { DayInfo } from '@/types';
+import type { DayInfo, RecordType } from '@/types';
 import styles from './index.module.scss';
 
 const WEEKDAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 
+const QUICK_TYPES: Array<{ value: RecordType; label: string; icon: string }> = [
+  { value: 'intercourse', label: '同房', icon: '💕' },
+  { value: 'medication', label: '用药', icon: '💊' },
+  { value: 'symptom', label: '症状', icon: '📝' }
+];
+
 const CalendarPage: React.FC = () => {
-  const { cycleConfig, records, updateCycleConfig } = useApp();
+  const { cycleConfig, records, updateCycleConfig, addRecord, deleteRecord } = useApp();
   const now = dayjs();
   const [year, setYear] = useState(now.year());
   const [month, setMonth] = useState(now.month());
   const [selectedDay, setSelectedDay] = useState<DayInfo | null>(null);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickType, setQuickType] = useState<RecordType>('intercourse');
+  const [quickNote, setQuickNote] = useState('');
 
   useDidShow(() => {
     console.log('[CalendarPage] didShow');
@@ -35,6 +44,11 @@ const CalendarPage: React.FC = () => {
 
   const fertileWindow = useMemo(() => getFertileWindow(cycleConfig), [cycleConfig]);
   const periodRange = useMemo(() => getPeriodRange(cycleConfig), [cycleConfig]);
+
+  const selectedDayRecords = useMemo(() => {
+    if (!selectedDay) return [];
+    return records.filter(r => r.date === selectedDay.date);
+  }, [selectedDay, records]);
 
   const handlePrevMonth = () => {
     if (month === 0) {
@@ -65,6 +79,8 @@ const CalendarPage: React.FC = () => {
 
   const handleDayClick = (day: DayInfo) => {
     setSelectedDay(day);
+    setShowQuickAdd(false);
+    setQuickNote('');
   };
 
   const handleSetOvulation = () => {
@@ -79,6 +95,42 @@ const CalendarPage: React.FC = () => {
         if (res.confirm) {
           updateCycleConfig({ manualOvulationDate: selectedDay.date });
           Taro.showToast({ title: '已更新', icon: 'success' });
+        }
+      }
+    });
+  };
+
+  const handleOpenQuickAdd = () => {
+    setQuickType('intercourse');
+    setQuickNote('');
+    setShowQuickAdd(true);
+  };
+
+  const handleQuickSubmit = () => {
+    if (!selectedDay) return;
+    const typeInfo = QUICK_TYPES.find(t => t.value === quickType);
+    addRecord({
+      date: selectedDay.date,
+      type: quickType,
+      typeText: typeInfo?.label || '',
+      note: quickNote.trim() || undefined
+    });
+    Taro.showToast({ title: '已记录', icon: 'success' });
+    setShowQuickAdd(false);
+    setQuickNote('');
+  };
+
+  const handleDeleteRecord = (id: string) => {
+    Taro.showModal({
+      title: '删除记录',
+      content: '确定要删除这条记录吗？',
+      confirmText: '删除',
+      cancelText: '取消',
+      confirmColor: '#D9534F',
+      success: (res) => {
+        if (res.confirm) {
+          deleteRecord(id);
+          Taro.showToast({ title: '已删除', icon: 'success' });
         }
       }
     });
@@ -110,6 +162,16 @@ const CalendarPage: React.FC = () => {
     if (intensity === 2) return '中等 - 可开始准备';
     if (intensity === 1) return '较低 - 窗口期尾段';
     return '日常 - 无需特别安排';
+  };
+
+  const getRecordTypeIcon = (type: RecordType) => {
+    switch (type) {
+      case 'intercourse': return '💕';
+      case 'period_abnormal': return '🩸';
+      case 'medication': return '💊';
+      case 'symptom': return '📝';
+      default: return '📋';
+    }
   };
 
   return (
@@ -207,22 +269,82 @@ const CalendarPage: React.FC = () => {
               {selectedDay.isOvulationDay ? '✓ 排卵日' : '—'}
             </Text>
           </View>
-          <View className={styles.selectedInfoRow}>
-            <Text className={styles.selectedInfoLabel}>同房记录</Text>
-            <Text className={styles.selectedInfoValue}>
-              {selectedDay.hasRecord ? '✓ 已记录' : '暂无'}
-            </Text>
-          </View>
 
-          {!selectedDay.isPeriod && (
-            <View style={{ marginTop: '24rpx' }}>
+          {selectedDayRecords.length > 0 && (
+            <View className={styles.dayRecordsSection}>
+              <Text className={styles.dayRecordsTitle}>当日记录</Text>
+              {selectedDayRecords.map(rec => (
+                <View key={rec.id} className={styles.dayRecordItem}>
+                  <Text className={styles.dayRecordIcon}>{getRecordTypeIcon(rec.type)}</Text>
+                  <View className={styles.dayRecordContent}>
+                    <Text className={styles.dayRecordType}>{rec.typeText}</Text>
+                    {rec.note && <Text className={styles.dayRecordNote}>{rec.note}</Text>}
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {selectedDayRecords.length === 0 && (
+            <View className={styles.noRecordHint}>
+              <Text className={styles.noRecordText}>当日暂无记录，点击下方按钮快速补记</Text>
+            </View>
+          )}
+
+          {!showQuickAdd && (
+            <View className={styles.dayActions}>
               <Button
                 className='primaryButton'
-                onClick={handleSetOvulation}
-                style={{ width: '100%' }}
+                onClick={handleOpenQuickAdd}
+                style={{ flex: 1, marginRight: '12rpx' }}
               >
-                设为排卵日
+                快速补记
               </Button>
+              {!selectedDay.isPeriod && (
+                <Button
+                  className='ghostButton'
+                  onClick={handleSetOvulation}
+                  style={{ flex: 1 }}
+                >
+                  设为排卵日
+                </Button>
+              )}
+            </View>
+          )}
+
+          {showQuickAdd && (
+            <View className={styles.quickAddForm}>
+              <Text className={styles.quickAddTitle}>快速补记</Text>
+              <View className={styles.quickTypeRow}>
+                {QUICK_TYPES.map(t => (
+                  <View
+                    key={t.value}
+                    className={classnames(styles.quickTypeBtn, quickType === t.value && styles.quickTypeActive)}
+                    onClick={() => setQuickType(t.value)}
+                  >
+                    <Text>{t.icon} {t.label}</Text>
+                  </View>
+                ))}
+              </View>
+              <View className={styles.quickNoteBox}>
+                <Textarea
+                  className={styles.quickNoteInput}
+                  placeholder='备注（可选）'
+                  value={quickNote}
+                  onInput={(e) => setQuickNote(e.detail.value)}
+                  maxlength={100}
+                  autoHeight
+                  style={{ maxHeight: '120rpx' }}
+                />
+              </View>
+              <View className={styles.quickActions}>
+                <View className={styles.quickCancelBtn} onClick={() => setShowQuickAdd(false)}>
+                  取消
+                </View>
+                <View className={styles.quickConfirmBtn} onClick={handleQuickSubmit}>
+                  保存
+                </View>
+              </View>
             </View>
           )}
         </View>

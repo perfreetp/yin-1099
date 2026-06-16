@@ -59,6 +59,14 @@ export interface CycleSummary {
   totalIntercourse: number;
   currentStreak: number;
   lastOvulationDate: string | null;
+  fertileDaysTotal: number;
+  coveredPeakDays: number;
+  peakDaysTotal: number;
+  coveragePercent: number;
+  hasAbnormalPeriod: boolean;
+  hasMedication: boolean;
+  isSkipped: boolean;
+  reviewNote: string;
 }
 
 export interface AppState {

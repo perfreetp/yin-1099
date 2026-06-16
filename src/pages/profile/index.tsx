@@ -36,6 +36,12 @@ const ProfilePage: React.FC = () => {
   const summary = useMemo(() => calculateCycleSummary(records, cycleConfig), [records, cycleConfig]);
   const daysUntil = getDaysUntilOvulation(cycleConfig);
 
+  const getCoverageColor = () => {
+    if (summary.coveragePercent >= 75) return '#7EC8A3';
+    if (summary.coveragePercent >= 50) return '#D99660';
+    return '#D9534F';
+  };
+
   const handleMenuItemClick = (action: string) => {
     switch (action) {
       case 'export':
@@ -140,7 +146,9 @@ const ProfilePage: React.FC = () => {
       <View className={styles.section}>
         <View className={styles.sectionHeader}>
           <Text className={styles.sectionTitle}>周期回顾</Text>
-          <Text className={styles.sectionCount}>第 {summary.cycleCount} 周期</Text>
+          <Text className={styles.sectionCount}>
+            {summary.isSkipped ? '已跳过' : `第 ${summary.cycleCount} 周期`}
+          </Text>
         </View>
 
         <View className={styles.menuItem}>
@@ -168,25 +176,64 @@ const ProfilePage: React.FC = () => {
 
         <View className={styles.menuItem}>
           <View className={styles.menuIconBox}>
-            <Text className={styles.menuIcon}>📝</Text>
+            <Text className={styles.menuIcon}>🎯</Text>
           </View>
           <View className={styles.menuContent}>
-            <Text className={styles.menuTitle}>总记录数</Text>
-            <Text className={styles.menuDesc}>{records.length} 条</Text>
+            <Text className={styles.menuTitle}>重点时段覆盖</Text>
+            <Text className={styles.menuDesc}>
+              {summary.coveredPeakDays} / {summary.peakDaysTotal} 天同房
+              <Text style={{ color: getCoverageColor(), marginLeft: '8rpx' }}>
+                {summary.coveragePercent}%
+              </Text>
+            </Text>
+          </View>
+          <View className={styles.miniBar}>
+            <View
+              className={styles.miniBarFill}
+              style={{ width: `${summary.coveragePercent}%`, background: getCoverageColor() }}
+            />
           </View>
         </View>
 
-        {cycleConfig.isSkipped && (
+        {summary.hasAbnormalPeriod && (
           <View className={styles.menuItem}>
-            <View className={styles.menuIconBox}>
-              <Text className={styles.menuIcon}>⏭️</Text>
+            <View className={styles.menuIconBox} style={{ background: '#FFF1E5' }}>
+              <Text className={styles.menuIcon}>🩸</Text>
             </View>
             <View className={styles.menuContent}>
-              <Text className={styles.menuTitle}>本周期状态</Text>
-              <Text className={styles.menuDesc}>已跳过</Text>
+              <Text className={styles.menuTitle} style={{ color: '#D99660' }}>月经异常记录</Text>
+              <Text className={styles.menuDesc}>本周期有异常记录，建议关注规律性</Text>
             </View>
           </View>
         )}
+
+        {summary.hasMedication && (
+          <View className={styles.menuItem}>
+            <View className={styles.menuIconBox} style={{ background: '#E8F5E9' }}>
+              <Text className={styles.menuIcon}>💊</Text>
+            </View>
+            <View className={styles.menuContent}>
+              <Text className={styles.menuTitle} style={{ color: '#4FA67A' }}>用药记录</Text>
+              <Text className={styles.menuDesc}>部分药物可能影响受孕，请咨询医生</Text>
+            </View>
+          </View>
+        )}
+
+        {summary.isSkipped && (
+          <View className={styles.menuItem}>
+            <View className={styles.menuIconBox} style={{ background: '#F5F0F2' }}>
+              <Text className={styles.menuIcon}>⏭️</Text>
+            </View>
+            <View className={styles.menuContent}>
+              <Text className={styles.menuTitle} style={{ color: '#7A6A70' }}>周期已跳过</Text>
+              <Text className={styles.menuDesc}>回顾数据仅供参考</Text>
+            </View>
+          </View>
+        )}
+
+        <View className={styles.reviewNote}>
+          <Text className={styles.reviewNoteText}>{summary.reviewNote}</Text>
+        </View>
       </View>
 
       <View className={styles.privacyCard}>

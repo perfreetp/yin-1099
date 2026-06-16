@@ -164,6 +164,8 @@ export const getDaysUntilOvulation = (config: CycleConfig): number => {
 
 export const calculateCycleSummary = (records: BbtRecord[], config: CycleConfig): CycleSummary => {
   const intercourseRecords = records.filter(r => r.type === 'intercourse');
+  const abnormalRecords = records.filter(r => r.type === 'period_abnormal');
+  const medicationRecords = records.filter(r => r.type === 'medication');
   const avgCycleLength = config.cycleLength;
   const avgPeriodLength = config.periodLength;
 
@@ -183,13 +185,72 @@ export const calculateCycleSummary = (records: BbtRecord[], config: CycleConfig)
     }
   }
 
+  const ovulation = getOvulationDate(config);
+  const fertile = getFertileWindow(config);
+
+  const fertileDaysTotal = 9;
+  const peakDaysTotal = 4;
+
+  const intercourseDates = new Set(intercourseRecords.map(r => r.date));
+
+  let coveredPeakDays = 0;
+  for (let i = -2; i <= 1; i++) {
+    const d = addDays(ovulation, i);
+    const ds = dayjs(d).format('YYYY-MM-DD');
+    if (intercourseDates.has(ds)) {
+      coveredPeakDays++;
+    }
+  }
+
+  let coveredFertileDays = 0;
+  for (let i = -6; i <= 2; i++) {
+    const d = addDays(ovulation, i);
+    const ds = dayjs(d).format('YYYY-MM-DD');
+    if (intercourseDates.has(ds)) {
+      coveredFertileDays++;
+    }
+  }
+
+  const coveragePercent = peakDaysTotal > 0 ? Math.round((coveredPeakDays / peakDaysTotal) * 100) : 0;
+  const hasAbnormalPeriod = abnormalRecords.length > 0;
+  const hasMedication = medicationRecords.length > 0;
+  const isSkipped = config.isSkipped;
+
+  const parts: string[] = [];
+  if (isSkipped) {
+    parts.push('本周期已跳过，回顾数据仅供参考。');
+  }
+  if (coveredPeakDays >= 3) {
+    parts.push('重点时段覆盖良好，安排到位。');
+  } else if (coveredPeakDays >= 1) {
+    parts.push('重点时段部分覆盖，建议增加安排频率。');
+  } else if (intercourseRecords.length > 0) {
+    parts.push('同房记录未覆盖重点时段，注意时机。');
+  } else {
+    parts.push('暂无同房记录，请在易孕期合理安排。');
+  }
+  if (hasAbnormalPeriod) {
+    parts.push('本周期有月经异常记录，建议关注周期规律性。');
+  }
+  if (hasMedication) {
+    parts.push('本周期有用药记录，部分药物可能影响受孕。');
+  }
+
   return {
     cycleCount: 1,
     avgCycleLength,
     avgPeriodLength,
     totalIntercourse: intercourseRecords.length,
     currentStreak,
-    lastOvulationDate: formatDate(getOvulationDate(config))
+    lastOvulationDate: formatDate(getOvulationDate(config)),
+    fertileDaysTotal,
+    coveredPeakDays,
+    peakDaysTotal,
+    coveragePercent,
+    hasAbnormalPeriod,
+    hasMedication,
+    isSkipped,
+    reviewNote: parts.join('')
   };
 };
 
