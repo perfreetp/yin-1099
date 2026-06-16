@@ -16,7 +16,7 @@ const GREETINGS = [
 ];
 
 const ProfilePage: React.FC = () => {
-  const { todos, cycleConfig, records, toggleTodo, resetCycle } = useApp();
+  const { todos, cycleConfig, records, toggleTodo, resetAllData } = useApp();
 
   useDidShow(() => {
     console.log('[ProfilePage] didShow');
@@ -44,14 +44,14 @@ const ProfilePage: React.FC = () => {
       case 'reset':
         Taro.showModal({
           title: '重置所有数据',
-          content: '此操作将清除所有周期参数和记录，确定吗？',
+          content: '此操作将清除所有周期参数、备孕记录、提醒设置和清单勾选状态，恢复到初始状态。确定吗？',
           confirmText: '重置',
           cancelText: '取消',
           confirmColor: '#D9534F',
           success: (res) => {
             if (res.confirm) {
-              resetCycle();
-              Taro.showToast({ title: '已重置', icon: 'success' });
+              resetAllData();
+              Taro.showToast({ title: '已重置所有数据', icon: 'success' });
             }
           }
         });

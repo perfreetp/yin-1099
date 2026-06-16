@@ -1,24 +1,49 @@
-import React from 'react';
-import { View, Text, Switch } from '@tarojs/components';
+import React, { useState } from 'react';
+import { View, Text, Switch, Button } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
 import classnames from 'classnames';
 import { useApp } from '@/store/AppContext';
-import ReminderItem from '@/components/ReminderItem';
-import { getDaysUntilOvulation, getOvulationDate, formatDate } from '@/utils/cycle';
+import { getDaysUntilOvulation, getOvulationDate, getTodayInfo, formatDate } from '@/utils/cycle';
 import styles from './index.module.scss';
 
-const INTENSITY_OPTIONS = [
-  { value: 'all', title: '全部时段', desc: '易孕期内每天提醒' },
-  { value: 'peak', title: '仅重点期', desc: '排卵日前后3天提醒' },
-  { value: 'start_end', title: '关注+结束', desc: '开始和结束阶段提醒' }
-] as const;
-
 const ReminderPage: React.FC = () => {
-  const { reminderConfig, updateReminderConfig, cycleConfig } = useApp();
+  const { reminderConfig, updateReminderConfig, cycleConfig, records, requestNotificationAuth, checkAndSendReminder } = useApp();
+  const [authStatus, setAuthStatus] = useState<'unknown' | 'authorized' | 'denied'>('unknown');
 
   useDidShow(() => {
     console.log('[ReminderPage] didShow');
+    checkNotificationAuth();
   });
+
+  const checkNotificationAuth = async () => {
+    try {
+      const setting = await Taro.getSetting();
+      const authorized = setting.authSetting['scope.subscribeMessage'] || setting.authSetting['scope.notification'] || false;
+      setAuthStatus(authorized ? 'authorized' : 'denied');
+      console.log('[ReminderPage] authStatus:', authorized ? 'authorized' : 'denied');
+    } catch (err) {
+      console.error('[ReminderPage] checkAuth error:', err);
+      setAuthStatus('unknown');
+    }
+  };
+
+  const handleRequestAuth = async () => {
+    try {
+      await requestNotificationAuth();
+      setAuthStatus('authorized');
+      Taro.showToast({ title: '授权成功', icon: 'success' });
+    } catch (err) {
+      console.error('[ReminderPage] requestAuth error:', err);
+      setAuthStatus('denied');
+      Taro.showModal({
+        title: '需要通知权限',
+        content: '请在系统设置中开启本应用的通知权限，以便接收备孕提醒。您也可以稍后在系统设置中手动开启。',
+        showCancel: false,
+        confirmText: '我知道了',
+        confirmColor: '#D4859C'
+      });
+    }
+  };
 
   const handlePickTime = async (field: 'femaleTime' | 'maleTime') => {
     try {
@@ -34,8 +59,25 @@ const ReminderPage: React.FC = () => {
     }
   };
 
+  const handleTestReminder = () => {
+    checkAndSendReminder();
+  };
+
   const daysUntil = getDaysUntilOvulation(cycleConfig);
   const ovuDate = getOvulationDate(cycleConfig);
+  const todayInfo = getTodayInfo(cycleConfig, records);
+
+  const getAuthText = () => {
+    if (authStatus === 'authorized') return '✓ 已授权通知';
+    if (authStatus === 'denied') return '✗ 通知未授权';
+    return '未检测到授权状态';
+  };
+
+  const getAuthColor = () => {
+    if (authStatus === 'authorized') return '#7EC8A3';
+    if (authStatus === 'denied') return '#D9534F';
+    return '#B0A2A8';
+  };
 
   return (
     <View className={styles.container}>
@@ -44,6 +86,34 @@ const ReminderPage: React.FC = () => {
         <Text className={styles.pageDesc}>
           为你们设置专属提醒，不错过每一个关键时机
         </Text>
+      </View>
+
+      <View className={styles.sectionCard}>
+        <Text className={styles.sectionLabel}>通知授权</Text>
+        <View className={styles.switchRow}>
+          <View className={styles.switchContent}>
+            <Text className={styles.switchTitle}>通知权限状态</Text>
+            <Text className={styles.switchDesc} style={{ color: getAuthColor() }}>
+              {getAuthText()}
+            </Text>
+          </View>
+          {authStatus !== 'authorized' && (
+            <Button
+              className='primaryButton'
+              style={{ height: '64rpx', fontSize: '24rpx', padding: '0 24rpx', borderRadius: '32rpx' }}
+              onClick={handleRequestAuth}
+            >
+              去授权
+            </Button>
+          )}
+        </View>
+        {authStatus === 'denied' && (
+          <View style={{ padding: '16rpx 16rpx 8rpx' }}>
+            <Text style={{ fontSize: '22rpx', color: '#B0A2A8', lineHeight: 1.5 }}>
+              如无法弹出授权窗口，请前往手机「设置 → 应用管理」中找到本应用，手动开启通知权限。
+            </Text>
+          </View>
+        )}
       </View>
 
       <View className={styles.sectionCard}>
@@ -164,31 +234,45 @@ const ReminderPage: React.FC = () => {
       </View>
 
       {reminderConfig.enabled && (
-        <View className={styles.previewCard}>
-          <Text className={styles.previewLabel}>通知预览 · 下次提醒</Text>
-          <View className={styles.previewContent}>
-            <View className={styles.previewIcon}>💗</View>
-            <View className={styles.previewTextWrap}>
-              <Text className={styles.previewTitle}>
-                {daysUntil > 3
-                  ? '开始关注易孕期'
-                  : daysUntil >= 0
-                    ? '进入重点安排时段'
-                    : '易孕期即将结束'}
-              </Text>
-              <Text className={styles.previewDesc}>
-                {daysUntil > 0
-                  ? `距离排卵日还有 ${daysUntil} 天（${formatDate(ovuDate, 'M月D日')}）`
-                  : daysUntil === 0
-                    ? '今天就是排卵日，把握最佳时机'
-                    : '下次月经前保持规律作息'}
-              </Text>
-              <Text className={styles.timeRangeTag}>
-                女方 {reminderConfig.femaleTime} · 男方 {reminderConfig.maleTime}
-              </Text>
+        <>
+          <View className={styles.previewCard}>
+            <Text className={styles.previewLabel}>今日提醒预览</Text>
+            <View className={styles.previewContent}>
+              <View className={styles.previewIcon}>
+                {todayInfo.intensity >= 3 ? '💗' : todayInfo.intensity >= 2 ? '🌱' : todayInfo.intensity >= 1 ? '🍂' : '🌙'}
+              </View>
+              <View className={styles.previewTextWrap}>
+                <Text className={styles.previewTitle}>
+                  {todayInfo.intensity >= 3
+                    ? todayInfo.isOvulationDay ? '排卵日 · 把握最佳时机' : '重点安排 · 建议今日同房'
+                    : todayInfo.intensity >= 2
+                      ? '开始关注 · 易孕期已到'
+                      : todayInfo.intensity >= 1
+                        ? '临近结束 · 最后机会'
+                        : '今日无需特别安排'}
+                </Text>
+                <Text className={styles.previewDesc}>
+                  {todayInfo.intensity > 0
+                    ? `${todayInfo.phaseText} · 预计排卵日 ${formatDate(ovuDate, 'M月D日')}`
+                    : `预计排卵日 ${formatDate(ovuDate, 'M月D日')}，距今天 ${Math.max(0, daysUntil)} 天`}
+                </Text>
+                <Text className={styles.timeRangeTag}>
+                  女方 {reminderConfig.femaleTime} · 男方 {reminderConfig.maleTime}
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
+
+          <View style={{ marginTop: '16rpx' }}>
+            <Button
+              className='ghostButton'
+              style={{ width: '100%' }}
+              onClick={handleTestReminder}
+            >
+              测试发送今日提醒
+            </Button>
+          </View>
+        </>
       )}
     </View>
   );

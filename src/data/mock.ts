@@ -1,6 +1,5 @@
 import dayjs from 'dayjs';
-import type { CycleConfig, ReminderConfig, BbtRecord, TodoItem } from '@/types';
-import { generateId } from '@/utils/cycle';
+import type { CycleConfig, ReminderConfig, TodoItem } from '@/types';
 
 export const defaultCycleConfig: CycleConfig = {
   lastPeriodDate: dayjs().subtract(5, 'day').format('YYYY-MM-DD'),
@@ -21,62 +20,19 @@ export const defaultReminderConfig: ReminderConfig = {
   vibrate: true
 };
 
-export const mockRecords: BbtRecord[] = [
-  {
-    id: generateId(),
-    date: dayjs().subtract(10, 'day').format('YYYY-MM-DD'),
-    type: 'intercourse',
-    typeText: '同房',
-    note: '身体状态良好',
-    result: '正常',
-    createdAt: dayjs().subtract(10, 'day').format('YYYY-MM-DD HH:mm')
-  },
-  {
-    id: generateId(),
-    date: dayjs().subtract(8, 'day').format('YYYY-MM-DD'),
-    type: 'intercourse',
-    typeText: '同房',
-    createdAt: dayjs().subtract(8, 'day').format('YYYY-MM-DD HH:mm')
-  },
-  {
-    id: generateId(),
-    date: dayjs().subtract(6, 'day').format('YYYY-MM-DD'),
-    type: 'medication',
-    typeText: '用药记录',
-    note: '叶酸 400μg',
-    createdAt: dayjs().subtract(6, 'day').format('YYYY-MM-DD HH:mm')
-  },
-  {
-    id: generateId(),
-    date: dayjs().subtract(3, 'day').format('YYYY-MM-DD'),
-    type: 'intercourse',
-    typeText: '同房',
-    note: '排卵期前',
-    createdAt: dayjs().subtract(3, 'day').format('YYYY-MM-DD HH:mm')
-  },
-  {
-    id: generateId(),
-    date: dayjs().subtract(1, 'day').format('YYYY-MM-DD'),
-    type: 'symptom',
-    typeText: '身体症状',
-    note: '轻微乳房胀痛，疑似排卵信号',
-    createdAt: dayjs().subtract(1, 'day').format('YYYY-MM-DD HH:mm')
-  }
-];
-
-export const mockTodos: TodoItem[] = [
+export const defaultTodos: TodoItem[] = [
   {
     id: '1',
     title: '每日补充叶酸',
     desc: '建议 400μg/天，孕前3个月开始',
-    done: true,
+    done: false,
     category: 'nutrition'
   },
   {
     id: '2',
     title: '孕前检查（优生四项）',
     desc: 'TORCH 全套筛查',
-    done: true,
+    done: false,
     category: 'check'
   },
   {
@@ -97,7 +53,7 @@ export const mockTodos: TodoItem[] = [
     id: '5',
     title: '基础体温测量',
     desc: '每日早晨醒来测量并记录',
-    done: true,
+    done: false,
     category: 'prep'
   },
   {
@@ -118,7 +74,7 @@ export const mockTodos: TodoItem[] = [
     id: '8',
     title: '记录排卵信号',
     desc: '观察白带拉丝、体温变化',
-    done: true,
+    done: false,
     category: 'prep'
   }
 ];

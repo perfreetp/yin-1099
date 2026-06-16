@@ -21,8 +21,7 @@ const CyclePage: React.FC = () => {
     cycleConfig,
     records,
     updateCycleConfig,
-    skipCurrentCycle,
-    resetCycle
+    skipCurrentCycle
   } = useApp();
 
   const [editing, setEditing] = useState(false);
@@ -109,22 +108,6 @@ const CyclePage: React.FC = () => {
         if (res.confirm) {
           skipCurrentCycle();
           Taro.showToast({ title: '已跳过', icon: 'success' });
-        }
-      }
-    });
-  };
-
-  const handleReset = () => {
-    Taro.showModal({
-      title: '重置周期',
-      content: '确定要重置周期参数吗？',
-      confirmText: '重置',
-      cancelText: '取消',
-      confirmColor: '#D4859C',
-      success: (res) => {
-        if (res.confirm) {
-          resetCycle();
-          Taro.showToast({ title: '已重置', icon: 'success' });
         }
       }
     });
@@ -261,12 +244,6 @@ const CyclePage: React.FC = () => {
       </View>
 
       <View className={styles.actionButtons}>
-        <Button
-          className={classnames(styles.skipButton, 'ghostButton')}
-          onClick={handleReset}
-        >
-          重置周期参数
-        </Button>
         <Button
           className={styles.skipButton}
           onClick={handleSkipCycle}

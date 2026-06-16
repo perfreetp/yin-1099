@@ -32,14 +32,28 @@ export const getOvulationDate = (config: CycleConfig): Date => {
   return addDays(config.lastPeriodDate, config.ovulationDayOffset);
 };
 
-export const getFertileWindow = (config: CycleConfig): { start: Date; peakStart: Date; ovulation: Date; peakEnd: Date; end: Date } => {
+export const getFertileWindow = (config: CycleConfig): {
+  start: Date;
+  peakStart: Date;
+  ovulation: Date;
+  peakEnd: Date;
+  end: Date;
+  startEnd: Date;
+  peakStartEnd: Date;
+  endStart: Date;
+  endEnd: Date;
+} => {
   const ovulation = getOvulationDate(config);
   return {
     start: addDays(ovulation, -6),
     peakStart: addDays(ovulation, -2),
     ovulation,
     peakEnd: addDays(ovulation, 1),
-    end: addDays(ovulation, 1)
+    end: addDays(ovulation, 2),
+    startEnd: addDays(ovulation, -3),
+    peakStartEnd: addDays(ovulation, 1),
+    endStart: addDays(ovulation, 2),
+    endEnd: addDays(ovulation, 2)
   };
 };
 
@@ -55,11 +69,14 @@ export const getNextPeriodDate = (config: CycleConfig): Date => {
 
 export const getDayPhase = (date: Date | string, config: CycleConfig): { phase: WindowPhase; phaseText: string; intensity: number; isOvulationDay: boolean; isPeriod: boolean } => {
   const d = typeof date === 'string' ? parseDate(date) : date;
-  const fertile = getFertileWindow(config);
+  const dDay = dayjs(d);
+  const ovulation = getOvulationDate(config);
   const period = getPeriodRange(config);
 
-  const isOvulationDay = isSameDay(d, fertile.ovulation);
-  const isPeriod = (dayjs(d).isAfter(dayjs(period.start).subtract(1, 'day')) && dayjs(d).isBefore(dayjs(period.end).add(1, 'day')));
+  const isOvulationDay = isSameDay(d, ovulation);
+  const isPeriod = dDay.isAfter(dayjs(period.start).subtract(1, 'day')) && dDay.isBefore(dayjs(period.end).add(1, 'day'));
+
+  const dayOffset = dDay.diff(dayjs(ovulation), 'day');
 
   let phase: WindowPhase = 'safe';
   let phaseText = '安全期';
@@ -69,33 +86,32 @@ export const getDayPhase = (date: Date | string, config: CycleConfig): { phase: 
     phase = 'period';
     phaseText = '月经期';
     intensity = 0;
-  } else if (isOvulationDay) {
-    phase = 'peak';
-    phaseText = '排卵日 · 重点';
-    intensity = 3;
-  } else if (dayjs(d).isAfter(dayjs(fertile.peakStart).subtract(1, 'day')) && dayjs(d).isBefore(dayjs(fertile.peakEnd).add(1, 'day'))) {
-    phase = 'peak';
-    phaseText = '重点安排';
-    intensity = 3;
-  } else if (dayjs(d).isAfter(dayjs(fertile.start).subtract(1, 'day')) && dayjs(d).isBefore(dayjs(fertile.peakStart))) {
+  } else if (dayOffset >= -6 && dayOffset <= -3) {
     phase = 'start';
     phaseText = '开始关注';
     intensity = 2;
-  } else if (dayjs(d).isAfter(dayjs(fertile.peakEnd)) && dayjs(d).isBefore(dayjs(addDays(fertile.end, 1)))) {
+  } else if (dayOffset >= -2 && dayOffset <= 1) {
+    if (isOvulationDay) {
+      phase = 'peak';
+      phaseText = '排卵日 · 重点';
+      intensity = 3;
+    } else {
+      phase = 'peak';
+      phaseText = '重点安排';
+      intensity = 3;
+    }
+  } else if (dayOffset === 2) {
     phase = 'end';
     phaseText = '临近结束';
     intensity = 1;
+  } else if (dDay.isAfter(dayjs(period.end)) && dDay.isBefore(dayjs(addDays(ovulation, -6)))) {
+    phase = 'normal';
+    phaseText = '日常';
+    intensity = 0;
   } else {
-    const nextPeriod = getNextPeriodDate(config);
-    if (dayjs(d).isAfter(dayjs(fertile.end)) && dayjs(d).isBefore(dayjs(nextPeriod).subtract(3, 'day'))) {
-      phase = 'safe';
-      phaseText = '安全期';
-      intensity = 0;
-    } else if (dayjs(d).isAfter(dayjs(period.end)) && dayjs(d).isBefore(dayjs(fertile.start))) {
-      phase = 'normal';
-      phaseText = '日常';
-      intensity = 0;
-    }
+    phase = 'safe';
+    phaseText = '安全期';
+    intensity = 0;
   }
 
   return { phase, phaseText, intensity, isOvulationDay, isPeriod };

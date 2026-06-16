@@ -243,7 +243,7 @@ const CalendarPage: React.FC = () => {
           <View className={classnames(styles.windowPhaseDot, styles.dotStart)} />
           <Text className={styles.windowPhaseName}>开始关注</Text>
           <Text className={styles.windowPhaseRange}>
-            {formatDate(fertileWindow.start, 'M月D日')} - {formatDate(dayjs(fertileWindow.peakStart).subtract(1, 'day').toDate(), 'M月D日')}
+            {formatDate(fertileWindow.start, 'M月D日')} - {formatDate(fertileWindow.startEnd, 'M月D日')}
           </Text>
         </View>
 
@@ -251,7 +251,7 @@ const CalendarPage: React.FC = () => {
           <View className={classnames(styles.windowPhaseDot, styles.dotPeak)} />
           <Text className={styles.windowPhaseName}>重点安排</Text>
           <Text className={styles.windowPhaseRange}>
-            {formatDate(fertileWindow.peakStart, 'M月D日')} - {formatDate(fertileWindow.peakEnd, 'M月D日')}
+            {formatDate(fertileWindow.peakStart, 'M月D日')} - {formatDate(fertileWindow.peakStartEnd, 'M月D日')}
           </Text>
         </View>
 
@@ -259,7 +259,7 @@ const CalendarPage: React.FC = () => {
           <View className={classnames(styles.windowPhaseDot, styles.dotEnd)} />
           <Text className={styles.windowPhaseName}>临近结束</Text>
           <Text className={styles.windowPhaseRange}>
-            {formatDate(dayjs(fertileWindow.peakEnd).add(1, 'day').toDate(), 'M月D日')} - {formatDate(fertileWindow.end, 'M月D日')}
+            {formatDate(fertileWindow.endStart, 'M月D日')} - {formatDate(fertileWindow.endEnd, 'M月D日')}
           </Text>
         </View>
       </View>

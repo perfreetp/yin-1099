@@ -1,7 +1,35 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import Taro from '@tarojs/taro';
 import type { CycleConfig, ReminderConfig, BbtRecord, TodoItem, AppState } from '@/types';
-import { defaultCycleConfig, defaultReminderConfig, mockRecords, mockTodos } from '@/data/mock';
+import { defaultCycleConfig, defaultReminderConfig, defaultTodos } from '@/data/mock';
 import { generateId } from '@/utils/cycle';
+
+const STORAGE_KEYS = {
+  cycleConfig: 'haoyun_cycle_config',
+  reminderConfig: 'haoyun_reminder_config',
+  records: 'haoyun_records',
+  todos: 'haoyun_todos'
+};
+
+function loadFromStorage<T>(key: string, fallback: T): T {
+  try {
+    const raw = Taro.getStorageSync(key);
+    if (raw) {
+      return JSON.parse(raw) as T;
+    }
+  } catch (err) {
+    console.error('[Storage] load error:', key, err);
+  }
+  return fallback;
+}
+
+function saveToStorage<T>(key: string, value: T): void {
+  try {
+    Taro.setStorageSync(key, JSON.stringify(value));
+  } catch (err) {
+    console.error('[Storage] save error:', key, err);
+  }
+}
 
 interface AppContextType extends AppState {
   updateCycleConfig: (config: Partial<CycleConfig>) => void;
@@ -10,16 +38,42 @@ interface AppContextType extends AppState {
   deleteRecord: (id: string) => void;
   toggleTodo: (id: string) => void;
   skipCurrentCycle: () => void;
-  resetCycle: () => void;
+  resetAllData: () => void;
+  checkAndSendReminder: () => void;
+  requestNotificationAuth: () => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [cycleConfig, setCycleConfig] = useState<CycleConfig>(defaultCycleConfig);
-  const [reminderConfig, setReminderConfig] = useState<ReminderConfig>(defaultReminderConfig);
-  const [records, setRecords] = useState<BbtRecord[]>(mockRecords);
-  const [todos, setTodos] = useState<TodoItem[]>(mockTodos);
+  const [cycleConfig, setCycleConfig] = useState<CycleConfig>(() =>
+    loadFromStorage(STORAGE_KEYS.cycleConfig, defaultCycleConfig)
+  );
+  const [reminderConfig, setReminderConfig] = useState<ReminderConfig>(() =>
+    loadFromStorage(STORAGE_KEYS.reminderConfig, defaultReminderConfig)
+  );
+  const [records, setRecords] = useState<BbtRecord[]>(() =>
+    loadFromStorage(STORAGE_KEYS.records, [])
+  );
+  const [todos, setTodos] = useState<TodoItem[]>(() =>
+    loadFromStorage(STORAGE_KEYS.todos, defaultTodos)
+  );
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.cycleConfig, cycleConfig);
+  }, [cycleConfig]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.reminderConfig, reminderConfig);
+  }, [reminderConfig]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.records, records);
+  }, [records]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.todos, todos);
+  }, [todos]);
 
   const updateCycleConfig = useCallback((config: Partial<CycleConfig>) => {
     setCycleConfig(prev => {
@@ -71,10 +125,74 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   }, []);
 
-  const resetCycle = useCallback(() => {
+  const resetAllData = useCallback(() => {
+    console.log('[AppContext] resetAllData - clearing all state and storage');
     setCycleConfig(defaultCycleConfig);
-    console.log('[AppContext] resetCycle');
+    setReminderConfig(defaultReminderConfig);
+    setRecords([]);
+    setTodos(defaultTodos);
+    Taro.removeStorageSync(STORAGE_KEYS.cycleConfig);
+    Taro.removeStorageSync(STORAGE_KEYS.reminderConfig);
+    Taro.removeStorageSync(STORAGE_KEYS.records);
+    Taro.removeStorageSync(STORAGE_KEYS.todos);
   }, []);
+
+  const requestNotificationAuth = useCallback(async () => {
+    try {
+      console.log('[AppContext] requestNotificationAuth');
+      const setting = await Taro.getSetting();
+      if (!setting.authSetting['scope.subscribeMessage']) {
+        await Taro.requestSubscribeMessage({
+          tmplIds: [],
+          success: () => {
+            console.log('[AppContext] subscribeMessage success');
+          },
+          fail: (err) => {
+            console.error('[AppContext] subscribeMessage fail:', err);
+          }
+        });
+      }
+    } catch (err) {
+      console.error('[AppContext] requestNotificationAuth error:', err);
+    }
+  }, []);
+
+  const checkAndSendReminder = useCallback(() => {
+    if (!reminderConfig.enabled) return;
+
+    const { getTodayInfo, getOvulationDate, formatDate } = require('@/utils/cycle');
+    const todayInfo = getTodayInfo(cycleConfig, records);
+    const ovulationDate = getOvulationDate(cycleConfig);
+
+    if (todayInfo.intensity > 0 && !todayInfo.isPeriod) {
+      let title = '';
+      let content = '';
+
+      if (todayInfo.phase === 'peak') {
+        title = '💗 重点安排提醒';
+        content = todayInfo.isOvulationDay
+          ? '今天是排卵日，把握最佳时机'
+          : `排卵期重点时段，预计排卵日 ${formatDate(ovulationDate, 'M月D日')}`;
+      } else if (todayInfo.phase === 'start') {
+        title = '🌱 开始关注提醒';
+        content = `易孕期已开始，距离排卵日还有若干天`;
+      } else if (todayInfo.phase === 'end') {
+        title = '🍂 临近结束提醒';
+        content = '易孕期即将结束，如需安排请抓紧';
+      }
+
+      if (title) {
+        if (reminderConfig.notifyFemale) {
+          Taro.showToast({
+            title,
+            icon: 'none',
+            duration: 3000
+          });
+        }
+        console.log('[Reminder] notification:', title, content);
+      }
+    }
+  }, [reminderConfig, cycleConfig, records]);
 
   return (
     <AppContext.Provider
@@ -89,7 +207,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         deleteRecord,
         toggleTodo,
         skipCurrentCycle,
-        resetCycle
+        resetAllData,
+        checkAndSendReminder,
+        requestNotificationAuth
       }}
     >
       {children}
