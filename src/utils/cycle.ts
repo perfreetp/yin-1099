@@ -1,5 +1,13 @@
 import dayjs from 'dayjs';
-import type { CycleConfig, DayInfo, WindowPhase, CycleSummary, BbtRecord } from '@/types';
+import type {
+  CycleConfig,
+  DayInfo,
+  WindowPhase,
+  CycleSummary,
+  BbtRecord,
+  CycleArchive,
+  RecordType
+} from '@/types';
 
 export const formatDate = (date: Date | string, fmt = 'YYYY-MM-DD'): string => {
   return dayjs(date).format(fmt);
@@ -67,14 +75,35 @@ export const getNextPeriodDate = (config: CycleConfig): Date => {
   return addDays(config.lastPeriodDate, config.cycleLength);
 };
 
-export const getDayPhase = (date: Date | string, config: CycleConfig): { phase: WindowPhase; phaseText: string; intensity: number; isOvulationDay: boolean; isPeriod: boolean } => {
+export const getCycleDateRange = (config: CycleConfig): { start: Date; end: Date } => {
+  const start = parseDate(config.lastPeriodDate);
+  const end = addDays(start, config.cycleLength - 1);
+  return { start, end };
+};
+
+export const getRecordsForCycle = (records: BbtRecord[], config: CycleConfig): BbtRecord[] => {
+  const { start, end } = getCycleDateRange(config);
+  return records.filter(r => {
+    const d = dayjs(r.date);
+    return (d.isAfter(dayjs(start).subtract(1, 'day')) && d.isBefore(dayjs(end).add(1, 'day')));
+  });
+};
+
+export const getDayPhase = (date: Date | string, config: CycleConfig): {
+  phase: WindowPhase;
+  phaseText: string;
+  intensity: number;
+  isOvulationDay: boolean;
+  isPeriod: boolean;
+} => {
   const d = typeof date === 'string' ? parseDate(date) : date;
   const dDay = dayjs(d);
   const ovulation = getOvulationDate(config);
   const period = getPeriodRange(config);
 
   const isOvulationDay = isSameDay(d, ovulation);
-  const isPeriod = dDay.isAfter(dayjs(period.start).subtract(1, 'day')) && dDay.isBefore(dayjs(period.end).add(1, 'day'));
+  const isPeriod = dDay.isAfter(dayjs(period.start).subtract(1, 'day')) &&
+    dDay.isBefore(dayjs(period.end).add(1, 'day'));
 
   const dayOffset = dDay.diff(dayjs(ovulation), 'day');
 
@@ -117,16 +146,33 @@ export const getDayPhase = (date: Date | string, config: CycleConfig): { phase: 
   return { phase, phaseText, intensity, isOvulationDay, isPeriod };
 };
 
-export const generateCalendarDays = (year: number, month: number, config: CycleConfig, records: BbtRecord[]): DayInfo[] => {
+const getRecordTypeFlags = (dateStr: string, records: BbtRecord[]) => {
+  const dayRecords = records.filter(r => r.date === dateStr);
+  return {
+    hasRecord: dayRecords.length > 0,
+    hasIntercourse: dayRecords.some(r => r.type === 'intercourse'),
+    hasMedication: dayRecords.some(r => r.type === 'medication'),
+    hasSymptom: dayRecords.some(r => r.type === 'symptom'),
+    hasAbnormal: dayRecords.some(r => r.type === 'period_abnormal'),
+    recordCount: dayRecords.length
+  };
+};
+
+export const generateCalendarDays = (
+  year: number,
+  month: number,
+  config: CycleConfig,
+  records: BbtRecord[]
+): DayInfo[] => {
   const firstDay = dayjs(`${year}-${String(month + 1).padStart(2, '0')}-01`);
   const startDay = firstDay.subtract(firstDay.day(), 'day');
   const days: DayInfo[] = [];
-  const recordDates = new Set(records.filter(r => r.type === 'intercourse').map(r => r.date));
 
   for (let i = 0; i < 42; i++) {
     const d = startDay.add(i, 'day');
     const dateStr = d.format('YYYY-MM-DD');
     const dayPhase = getDayPhase(d.toDate(), config);
+    const recordFlags = getRecordTypeFlags(dateStr, records);
 
     days.push({
       date: dateStr,
@@ -134,7 +180,7 @@ export const generateCalendarDays = (year: number, month: number, config: CycleC
       isCurrentMonth: d.month() === month,
       isToday: isToday(d.toDate()),
       ...dayPhase,
-      hasRecord: recordDates.has(dateStr)
+      ...recordFlags
     });
   }
 
@@ -145,7 +191,7 @@ export const getTodayInfo = (config: CycleConfig, records: BbtRecord[]): DayInfo
   const today = dayjs();
   const dateStr = today.format('YYYY-MM-DD');
   const dayPhase = getDayPhase(today.toDate(), config);
-  const recordDates = new Set(records.filter(r => r.type === 'intercourse').map(r => r.date));
+  const recordFlags = getRecordTypeFlags(dateStr, records);
 
   return {
     date: dateStr,
@@ -153,7 +199,7 @@ export const getTodayInfo = (config: CycleConfig, records: BbtRecord[]): DayInfo
     isCurrentMonth: true,
     isToday: true,
     ...dayPhase,
-    hasRecord: recordDates.has(dateStr)
+    ...recordFlags
   };
 };
 
@@ -162,18 +208,26 @@ export const getDaysUntilOvulation = (config: CycleConfig): number => {
   return diffDays(ovulation, dayjs().toDate());
 };
 
-export const calculateCycleSummary = (records: BbtRecord[], config: CycleConfig): CycleSummary => {
-  const intercourseRecords = records.filter(r => r.type === 'intercourse');
-  const abnormalRecords = records.filter(r => r.type === 'period_abnormal');
-  const medicationRecords = records.filter(r => r.type === 'medication');
+export const calculateCycleSummary = (
+  records: BbtRecord[],
+  config: CycleConfig,
+  cycleIndex: number
+): CycleSummary => {
+  const cycleRecords = getRecordsForCycle(records, config);
+  const intercourseRecords = cycleRecords.filter(r => r.type === 'intercourse');
+  const abnormalRecords = cycleRecords.filter(r => r.type === 'period_abnormal');
+  const medicationRecords = cycleRecords.filter(r => r.type === 'medication');
+  const symptomRecords = cycleRecords.filter(r => r.type === 'symptom');
+
   const avgCycleLength = config.cycleLength;
   const avgPeriodLength = config.periodLength;
+  const cycleRange = getCycleDateRange(config);
 
   let currentStreak = 0;
   const sortedRecords = [...intercourseRecords].sort((a, b) => diffDays(b.date, a.date));
 
   if (sortedRecords.length > 0) {
-    let prevDate = dayjs();
+    let prevDate = dayjs(cycleRange.end).add(1, 'day');
     for (const rec of sortedRecords) {
       const diff = Math.abs(diffDays(prevDate.toDate(), rec.date));
       if (diff <= 2) {
@@ -186,7 +240,6 @@ export const calculateCycleSummary = (records: BbtRecord[], config: CycleConfig)
   }
 
   const ovulation = getOvulationDate(config);
-  const fertile = getFertileWindow(config);
 
   const fertileDaysTotal = 9;
   const peakDaysTotal = 4;
@@ -202,23 +255,19 @@ export const calculateCycleSummary = (records: BbtRecord[], config: CycleConfig)
     }
   }
 
-  let coveredFertileDays = 0;
-  for (let i = -6; i <= 2; i++) {
-    const d = addDays(ovulation, i);
-    const ds = dayjs(d).format('YYYY-MM-DD');
-    if (intercourseDates.has(ds)) {
-      coveredFertileDays++;
-    }
-  }
-
-  const coveragePercent = peakDaysTotal > 0 ? Math.round((coveredPeakDays / peakDaysTotal) * 100) : 0;
+  const coveragePercent = peakDaysTotal > 0 ?
+    Math.round((coveredPeakDays / peakDaysTotal) * 100) : 0;
   const hasAbnormalPeriod = abnormalRecords.length > 0;
   const hasMedication = medicationRecords.length > 0;
   const isSkipped = config.isSkipped;
 
   const parts: string[] = [];
   if (isSkipped) {
-    parts.push('本周期已跳过，回顾数据仅供参考。');
+    parts.push('本周期已跳过');
+    if (config.skipReason) {
+      parts.push(`（${config.skipReason}）`);
+    }
+    parts.push('，回顾数据仅供参考。');
   }
   if (coveredPeakDays >= 3) {
     parts.push('重点时段覆盖良好，安排到位。');
@@ -235,8 +284,14 @@ export const calculateCycleSummary = (records: BbtRecord[], config: CycleConfig)
   if (hasMedication) {
     parts.push('本周期有用药记录，部分药物可能影响受孕。');
   }
+  if (symptomRecords.length > 0) {
+    parts.push(`有 ${symptomRecords.length} 条身体症状记录。`);
+  }
 
   return {
+    cycleIndex,
+    cycleStartDate: formatDate(cycleRange.start),
+    cycleEndDate: formatDate(cycleRange.end),
     cycleCount: 1,
     avgCycleLength,
     avgPeriodLength,
@@ -250,10 +305,82 @@ export const calculateCycleSummary = (records: BbtRecord[], config: CycleConfig)
     hasAbnormalPeriod,
     hasMedication,
     isSkipped,
-    reviewNote: parts.join('')
+    skipReason: config.skipReason,
+    reviewNote: parts.join(''),
+    totalRecords: cycleRecords.length,
+    symptomCount: symptomRecords.length,
+    medicationCount: medicationRecords.length,
+    abnormalCount: abnormalRecords.length
   };
 };
 
 export const generateId = (): string => {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+};
+
+export const buildArchiveFromConfig = (
+  config: CycleConfig,
+  records: BbtRecord[],
+  index: number
+): CycleArchive => {
+  const summary = calculateCycleSummary(records, config, index);
+  return {
+    index,
+    config: { ...config },
+    summary
+  };
+};
+
+export const advanceToNextCycle = (
+  currentConfig: CycleConfig,
+  allRecords: BbtRecord[],
+  historyCycles: CycleArchive[],
+  nextCycleIndex: number
+): {
+  newConfig: CycleConfig;
+  newRecords: BbtRecord[];
+  newCycles: CycleArchive[];
+} => {
+  const currentIndex = nextCycleIndex - 1;
+  const archive = buildArchiveFromConfig(currentConfig, allRecords, currentIndex);
+
+  const newCycles = [...historyCycles, archive];
+
+  const nextStartDate = dayjs(currentConfig.lastPeriodDate)
+    .add(currentConfig.cycleLength, 'day')
+    .format('YYYY-MM-DD');
+
+  const newConfig: CycleConfig = {
+    ...currentConfig,
+    lastPeriodDate: nextStartDate,
+    manualOvulationDate: null,
+    isSkipped: false,
+    skipReason: undefined
+  };
+
+  return {
+    newConfig,
+    newRecords: allRecords,
+    newCycles
+  };
+};
+
+export const getRecordTypeLabel = (type: RecordType): string => {
+  switch (type) {
+    case 'intercourse': return '同房';
+    case 'period_abnormal': return '月经异常';
+    case 'medication': return '用药';
+    case 'symptom': return '症状';
+    default: return '记录';
+  }
+};
+
+export const getRecordTypeIcon = (type: RecordType): string => {
+  switch (type) {
+    case 'intercourse': return '💕';
+    case 'period_abnormal': return '🩸';
+    case 'medication': return '💊';
+    case 'symptom': return '📝';
+    default: return '📋';
+  }
 };

@@ -20,7 +20,8 @@ const WEEKDAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五
 const QUICK_TYPES: Array<{ value: RecordType; label: string; icon: string }> = [
   { value: 'intercourse', label: '同房', icon: '💕' },
   { value: 'medication', label: '用药', icon: '💊' },
-  { value: 'symptom', label: '症状', icon: '📝' }
+  { value: 'symptom', label: '症状', icon: '📝' },
+  { value: 'period_abnormal', label: '月经异常', icon: '🩸' }
 ];
 
 const CalendarPage: React.FC = () => {
@@ -272,13 +273,22 @@ const CalendarPage: React.FC = () => {
 
           {selectedDayRecords.length > 0 && (
             <View className={styles.dayRecordsSection}>
-              <Text className={styles.dayRecordsTitle}>当日记录</Text>
+              <Text className={styles.dayRecordsTitle}>
+                当日记录 · {selectedDayRecords.length} 条
+              </Text>
               {selectedDayRecords.map(rec => (
                 <View key={rec.id} className={styles.dayRecordItem}>
                   <Text className={styles.dayRecordIcon}>{getRecordTypeIcon(rec.type)}</Text>
                   <View className={styles.dayRecordContent}>
                     <Text className={styles.dayRecordType}>{rec.typeText}</Text>
+                    {rec.result && <Text className={styles.dayRecordResult}>{rec.result}</Text>}
                     {rec.note && <Text className={styles.dayRecordNote}>{rec.note}</Text>}
+                  </View>
+                  <View
+                    className={styles.deleteRecordBtn}
+                    onClick={() => handleDeleteRecord(rec.id)}
+                  >
+                    <Text className={styles.deleteRecordText}>删除</Text>
                   </View>
                 </View>
               ))}

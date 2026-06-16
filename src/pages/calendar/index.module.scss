@@ -276,11 +276,29 @@
   display: block;
 }
 
+.dayRecordResult {
+  font-size: $font-size-xs;
+  color: $color-primary-dark;
+  margin-top: 4rpx;
+  display: block;
+  font-weight: $font-weight-medium;
+}
+
 .dayRecordNote {
   font-size: $font-size-xs;
   color: $color-text-tertiary;
   margin-top: 4rpx;
   display: block;
+}
+
+.deleteRecordBtn {
+  padding: 8rpx 16rpx;
+  flex-shrink: 0;
+}
+
+.deleteRecordText {
+  font-size: $font-size-xs;
+  color: $color-period;
 }
 
 .noRecordHint {

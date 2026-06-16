@@ -1,20 +1,30 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode, useMemo } from 'react';
 import Taro from '@tarojs/taro';
-import type { CycleConfig, ReminderConfig, BbtRecord, TodoItem, AppState } from '@/types';
+import type { CycleConfig, ReminderConfig, BbtRecord, TodoItem, AppState, CycleArchive } from '@/types';
 import { defaultCycleConfig, defaultReminderConfig, defaultTodos } from '@/data/mock';
-import { generateId, getTodayInfo, getOvulationDate, getFertileWindow, formatDate, getDayPhase } from '@/utils/cycle';
+import {
+  generateId,
+  getTodayInfo,
+  getOvulationDate,
+  formatDate,
+  calculateCycleSummary,
+  advanceToNextCycle,
+  buildArchiveFromConfig
+} from '@/utils/cycle';
 
 const STORAGE_KEYS = {
   cycleConfig: 'haoyun_cycle_config',
   reminderConfig: 'haoyun_reminder_config',
   records: 'haoyun_records',
-  todos: 'haoyun_todos'
+  todos: 'haoyun_todos',
+  cycles: 'haoyun_cycles',
+  currentCycleIndex: 'haoyun_cycle_index'
 };
 
 function loadFromStorage<T>(key: string, fallback: T): T {
   try {
     const raw = Taro.getStorageSync(key);
-    if (raw) {
+    if (raw && raw !== '') {
       return JSON.parse(raw) as T;
     }
   } catch (err) {
@@ -41,19 +51,26 @@ export interface ReminderResult {
   phaseText: string;
   intensity: number;
   isLocalPreview: boolean;
+  canSubscribe: boolean;
+  hasTemplates: boolean;
 }
 
 interface AppContextType extends AppState {
+  currentCycleIndex: number;
   updateCycleConfig: (config: Partial<CycleConfig>) => void;
   updateReminderConfig: (config: Partial<ReminderConfig>) => void;
   addRecord: (record: Omit<BbtRecord, 'id' | 'createdAt'>) => void;
   deleteRecord: (id: string) => void;
   toggleTodo: (id: string) => void;
-  skipCurrentCycle: () => void;
+  skipCurrentCycle: (reason?: string) => void;
   resetAllData: () => void;
+  moveToNextCycle: () => void;
+  getCycleSummary: (cycleIndex?: number) => ReturnType<typeof calculateCycleSummary>;
+  getAllCycleSummaries: () => CycleArchive[];
   evalReminder: () => ReminderResult;
   requestNotificationAuth: () => Promise<{ success: boolean; isEnvironmentSupported: boolean; message: string }>;
   getNotificationEnvStatus: () => 'miniapp' | 'h5' | 'unknown';
+  canSubscribeMessages: () => boolean;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -71,6 +88,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [todos, setTodos] = useState<TodoItem[]>(() =>
     loadFromStorage(STORAGE_KEYS.todos, defaultTodos)
   );
+  const [cycles, setCycles] = useState<CycleArchive[]>(() =>
+    loadFromStorage<CycleArchive[]>(STORAGE_KEYS.cycles, [])
+  );
+  const [currentCycleIndex, setCurrentCycleIndex] = useState<number>(() =>
+    loadFromStorage<number>(STORAGE_KEYS.currentCycleIndex, 1)
+  );
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.cycleConfig, cycleConfig);
@@ -87,6 +110,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.todos, todos);
   }, [todos]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.cycles, cycles);
+  }, [cycles]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.currentCycleIndex, currentCycleIndex);
+  }, [currentCycleIndex]);
 
   const updateCycleConfig = useCallback((config: Partial<CycleConfig>) => {
     setCycleConfig(prev => {
@@ -131,10 +162,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   }, []);
 
-  const skipCurrentCycle = useCallback(() => {
+  const skipCurrentCycle = useCallback((reason?: string) => {
     setCycleConfig(prev => {
-      console.log('[AppContext] skipCurrentCycle');
-      return { ...prev, isSkipped: true };
+      console.log('[AppContext] skipCurrentCycle, reason:', reason);
+      return { ...prev, isSkipped: true, skipReason: reason };
     });
   }, []);
 
@@ -144,11 +175,41 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setReminderConfig(defaultReminderConfig);
     setRecords([]);
     setTodos(defaultTodos);
+    setCycles([]);
+    setCurrentCycleIndex(1);
     Taro.removeStorageSync(STORAGE_KEYS.cycleConfig);
     Taro.removeStorageSync(STORAGE_KEYS.reminderConfig);
     Taro.removeStorageSync(STORAGE_KEYS.records);
     Taro.removeStorageSync(STORAGE_KEYS.todos);
+    Taro.removeStorageSync(STORAGE_KEYS.cycles);
+    Taro.removeStorageSync(STORAGE_KEYS.currentCycleIndex);
   }, []);
+
+  const moveToNextCycle = useCallback(() => {
+    console.log('[AppContext] moveToNextCycle');
+    const result = advanceToNextCycle(cycleConfig, records, cycles, currentCycleIndex + 1);
+    setCycles(result.newCycles);
+    setCycleConfig(result.newConfig);
+    setCurrentCycleIndex(prev => prev + 1);
+    console.log('[AppContext] moved to cycle', currentCycleIndex + 1);
+  }, [cycleConfig, records, cycles, currentCycleIndex]);
+
+  const getCycleSummary = useCallback((cycleIndex?: number) => {
+    const idx = cycleIndex ?? currentCycleIndex;
+    if (idx === currentCycleIndex) {
+      return calculateCycleSummary(records, cycleConfig, idx);
+    }
+    const found = cycles.find(c => c.index === idx);
+    if (found) {
+      return found.summary;
+    }
+    return calculateCycleSummary(records, cycleConfig, idx);
+  }, [currentCycleIndex, cycleConfig, records, cycles]);
+
+  const getAllCycleSummaries = useCallback((): CycleArchive[] => {
+    const currentArchive = buildArchiveFromConfig(cycleConfig, records, currentCycleIndex);
+    return [...cycles, currentArchive].sort((a, b) => b.index - a.index);
+  }, [cycleConfig, records, cycles, currentCycleIndex]);
 
   const getNotificationEnvStatus = useCallback((): 'miniapp' | 'h5' | 'unknown' => {
     try {
@@ -159,6 +220,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return 'unknown';
     }
   }, []);
+
+  const canSubscribeMessages = useCallback((): boolean => {
+    const env = getNotificationEnvStatus();
+    const hasTemplates = reminderConfig.templateIds && reminderConfig.templateIds.length > 0;
+    return env === 'miniapp' && !!hasTemplates;
+  }, [getNotificationEnvStatus, reminderConfig.templateIds]);
 
   const requestNotificationAuth = useCallback(async (): Promise<{ success: boolean; isEnvironmentSupported: boolean; message: string }> => {
     const env = getNotificationEnvStatus();
@@ -179,6 +246,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       };
     }
 
+    if (!reminderConfig.templateIds || reminderConfig.templateIds.length === 0) {
+      return {
+        success: false,
+        isEnvironmentSupported: true,
+        message: '当前环境支持订阅消息，但尚未配置消息模板ID。请在小程序后台添加模板后在此处配置。'
+      };
+    }
+
     try {
       const setting = await Taro.getSetting();
       if (setting.authSetting['scope.subscribeMessage']) {
@@ -190,7 +265,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
 
       await Taro.requestSubscribeMessage({
-        tmplIds: [],
+        tmplIds: reminderConfig.templateIds,
         success: () => {
           console.log('[AppContext] subscribeMessage success');
         },
@@ -221,9 +296,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         message: '授权请求失败，请稍后再试或在微信设置中手动开启。'
       };
     }
-  }, [getNotificationEnvStatus]);
+  }, [getNotificationEnvStatus, reminderConfig.templateIds]);
 
   const evalReminder = useCallback((): ReminderResult => {
+    const env = getNotificationEnvStatus();
+    const hasTemplates = !!(reminderConfig.templateIds && reminderConfig.templateIds.length > 0);
+    const canSubscribe = env === 'miniapp' && hasTemplates;
+    const isLocalPreview = !canSubscribe;
+
     const result: ReminderResult = {
       shouldRemind: false,
       reason: '',
@@ -233,11 +313,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       maleTime: reminderConfig.maleTime,
       phaseText: '',
       intensity: 0,
-      isLocalPreview: true
+      isLocalPreview,
+      canSubscribe,
+      hasTemplates
     };
 
     if (!reminderConfig.enabled) {
       result.reason = '提醒总开关已关闭';
+      return result;
+    }
+
+    if (!reminderConfig.notifyFemale && !reminderConfig.notifyMale) {
+      result.reason = '女方和男方提醒都已关闭，没有接收人';
       return result;
     }
 
@@ -271,7 +358,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     if (!shouldRemindByIntensity()) {
-      const intensityLabel = reminderConfig.intensity === 'all' ? '全部时段' : reminderConfig.intensity === 'peak' ? '仅重点期' : '关注+结束';
+      const intensityLabel = reminderConfig.intensity === 'all' ? '全部时段' :
+        reminderConfig.intensity === 'peak' ? '仅重点期' : '关注+结束';
       result.reason = `今日阶段「${todayInfo.phaseText}」不在「${intensityLabel}」提醒范围内`;
       return result;
     }
@@ -289,27 +377,39 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     result.maleNotified = reminderConfig.notifyMale;
 
     return result;
-  }, [reminderConfig, cycleConfig, records]);
+  }, [reminderConfig, cycleConfig, records, getNotificationEnvStatus]);
+
+  const value = useMemo<AppContextType>(() => ({
+    cycleConfig,
+    reminderConfig,
+    records,
+    todos,
+    cycles,
+    currentCycleIndex,
+    updateCycleConfig,
+    updateReminderConfig,
+    addRecord,
+    deleteRecord,
+    toggleTodo,
+    skipCurrentCycle,
+    resetAllData,
+    moveToNextCycle,
+    getCycleSummary,
+    getAllCycleSummaries,
+    evalReminder,
+    requestNotificationAuth,
+    getNotificationEnvStatus,
+    canSubscribeMessages
+  }), [
+    cycleConfig, reminderConfig, records, todos, cycles, currentCycleIndex,
+    updateCycleConfig, updateReminderConfig, addRecord, deleteRecord, toggleTodo,
+    skipCurrentCycle, resetAllData, moveToNextCycle, getCycleSummary,
+    getAllCycleSummaries, evalReminder, requestNotificationAuth,
+    getNotificationEnvStatus, canSubscribeMessages
+  ]);
 
   return (
-    <AppContext.Provider
-      value={{
-        cycleConfig,
-        reminderConfig,
-        records,
-        todos,
-        updateCycleConfig,
-        updateReminderConfig,
-        addRecord,
-        deleteRecord,
-        toggleTodo,
-        skipCurrentCycle,
-        resetAllData,
-        evalReminder,
-        requestNotificationAuth,
-        getNotificationEnvStatus
-      }}
-    >
+    <AppContext.Provider value={value}>
       {children}
     </AppContext.Provider>
   );

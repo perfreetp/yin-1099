@@ -130,6 +130,39 @@
   border: 2rpx solid $color-bg-card;
 }
 
+.recordDotsRow {
+  display: flex;
+  gap: 4rpx;
+  align-items: center;
+  justify-content: center;
+  margin-top: 6rpx;
+  flex-wrap: wrap;
+  max-width: 90%;
+}
+
+.recordDotMini {
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dotIntercourse {
+  background: #D4859C;
+}
+
+.dotMedication {
+  background: #7EC8A3;
+}
+
+.dotSymptom {
+  background: #A78BFA;
+}
+
+.dotAbnormal {
+  background: #D9534F;
+}
+
 .intensityDots {
   display: flex;
   align-items: center;

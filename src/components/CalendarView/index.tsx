@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text } from '@tarojs/components';
 import classnames from 'classnames';
-import type { DayInfo } from '@/types';
+import type { DayInfo, RecordType } from '@/types';
 import styles from './index.module.scss';
 
 interface CalendarViewProps {
@@ -12,6 +12,13 @@ interface CalendarViewProps {
 }
 
 const WEEK_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
+
+const RECORD_TYPES: Array<{ type: RecordType; className: string }> = [
+  { type: 'intercourse', className: 'dotIntercourse' },
+  { type: 'medication', className: 'dotMedication' },
+  { type: 'symptom', className: 'dotSymptom' },
+  { type: 'period_abnormal', className: 'dotAbnormal' }
+];
 
 const CalendarView: React.FC<CalendarViewProps> = ({ year, month, days, onDayClick }) => {
   const getDayClass = (day: DayInfo) => {
@@ -44,6 +51,15 @@ const CalendarView: React.FC<CalendarViewProps> = ({ year, month, days, onDayCli
     return Array.from({ length: 3 }, (_, i) => i < intensity);
   };
 
+  const getActiveRecordTypes = (day: DayInfo): RecordType[] => {
+    const types: RecordType[] = [];
+    if (day.hasIntercourse) types.push('intercourse');
+    if (day.hasMedication) types.push('medication');
+    if (day.hasSymptom) types.push('symptom');
+    if (day.hasAbnormal) types.push('period_abnormal');
+    return types;
+  };
+
   return (
     <View className={styles.calendar}>
       <View className={styles.weekHeader}>
@@ -67,8 +83,23 @@ const CalendarView: React.FC<CalendarViewProps> = ({ year, month, days, onDayCli
               <View className={styles.ovulationMark}>卵</View>
             )}
 
-            {day.hasRecord && (
-              <View className={styles.recordDot} />
+            {day.recordCount > 0 && day.isCurrentMonth && (
+              <View className={styles.recordDotsRow}>
+                {RECORD_TYPES
+                  .filter(t => {
+                  switch (t.type) {
+                    case 'intercourse': return day.hasIntercourse;
+                    case 'medication': return day.hasMedication;
+                    case 'symptom': return day.hasSymptom;
+                    case 'period_abnormal': return day.hasAbnormal;
+                    default: return false;
+                  }
+                })
+                  .map(t => (
+                    <View key={t.type} className={classnames(styles.recordDotMini, styles[t.className])} />
+                  ))
+                }
+              </View>
             )}
 
             {day.intensity > 0 && day.isCurrentMonth && !day.isPeriod && (

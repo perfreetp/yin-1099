@@ -25,6 +25,25 @@
   display: block;
 }
 
+.cycleNoTag {
+  font-size: $font-size-sm;
+  color: $color-primary-dark;
+  background: $color-primary-bg;
+  padding: 4rpx 16rpx;
+  border-radius: $radius-round;
+  margin-left: $spacing-sm;
+  font-weight: $font-weight-medium;
+  line-height: 1.4;
+}
+
+.skipReasonText {
+  font-size: $font-size-sm;
+  color: #D99660;
+  margin-top: $spacing-xs;
+  display: block;
+  line-height: 1.4;
+}
+
 .formCard {
   background: $color-bg-card;
   border-radius: $radius-lg;
@@ -272,4 +291,91 @@
   font-size: $font-size-xs;
   margin-left: $spacing-sm;
   font-weight: $font-weight-normal;
+}
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  padding: $spacing-xl;
+}
+
+.modalContent {
+  background: $color-bg-card;
+  border-radius: $radius-xl;
+  padding: $spacing-xl $spacing-lg $spacing-md;
+  width: 100%;
+  max-width: 600rpx;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
+}
+
+.modalTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  text-align: center;
+  display: block;
+  margin-bottom: $spacing-sm;
+}
+
+.modalDesc {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  text-align: center;
+  display: block;
+  line-height: 1.6;
+  margin-bottom: $spacing-md;
+}
+
+.modalReasonInput {
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  padding: $spacing-sm $spacing-md;
+  margin-bottom: $spacing-lg;
+}
+
+.reasonTextarea {
+  width: 100%;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  line-height: 1.5;
+  min-height: 80rpx;
+}
+
+.modalActions {
+  display: flex;
+  gap: $spacing-md;
+}
+
+.modalBtn {
+  flex: 1;
+  height: $button-height-md;
+  border-radius: $radius-button;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  transition: all $transition-fast;
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+.modalCancelBtn {
+  background: $color-bg-page;
+  color: $color-text-secondary;
+}
+
+.modalConfirmBtn {
+  background: $color-primary;
+  color: $color-text-white;
 }

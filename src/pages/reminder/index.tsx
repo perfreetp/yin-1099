@@ -275,6 +275,9 @@ const ReminderPage: React.FC = () => {
             <Text className={styles.previewLabel}>
               今日提醒判定
               {reminderEval.shouldRemind ? ' · 会提醒' : ' · 不会提醒'}
+              <Text style={{ fontSize: '20rpx', fontWeight: 400, marginLeft: '8rpx', color: reminderEval.isLocalPreview ? '#D99660' : '#7EC8A3' }}>
+                {reminderEval.isLocalPreview ? '（本地预览）' : '（实际订阅）'}
+              </Text>
             </Text>
             <View className={styles.previewContent}>
               <View className={styles.previewIcon}>
@@ -284,35 +287,52 @@ const ReminderPage: React.FC = () => {
               </View>
               <View className={styles.previewTextWrap}>
                 <Text className={styles.previewTitle}>
-                  {reminderEval.shouldRemind ? reminderEval.reason : reminderEval.reason}
+                  {reminderEval.reason}
                 </Text>
                 {reminderEval.shouldRemind && (
                   <>
                     <Text className={styles.previewDesc}>
-                      {reminderEval.femaleNotified && `女方 ${reminderEval.femaleTime} 推送`}
-                      {reminderEval.femaleNotified && reminderEval.maleNotified && ' · '}
-                      {reminderEval.maleNotified && `男方 ${reminderEval.maleTime} 推送`}
-                      {!reminderEval.femaleNotified && !reminderEval.maleNotified && '未选择接收人'}
+                      女方 {reminderEval.femaleNotified ? `✓ ${reminderEval.femaleTime} 推送` : '✗ 已关闭'}
+                    </Text>
+                    <Text className={styles.previewDesc}>
+                      男方 {reminderEval.maleNotified ? `✓ ${reminderEval.maleTime} 推送` : '✗ 已关闭'}
                     </Text>
                     <Text className={styles.timeRangeTag}>
                       阶段: {reminderEval.phaseText || '日常'} · 强度: {reminderEval.intensity}
                     </Text>
                   </>
                 )}
+                {!reminderEval.shouldRemind && (
+                  <Text className={styles.previewDesc}>
+                    当前配置下今日不会触发提醒
+                  </Text>
+                )}
               </View>
             </View>
+
+            {reminderEval.isLocalPreview && (
+              <View className={styles.previewHint}>
+                <Text className={styles.previewHintText}>
+                  ⚠️ 当前为本地预览模式。{reminderEval.canSubscribe
+                    ? '请点击上方「去授权」开启订阅后，将发送实际提醒。'
+                    : '发布小程序并配置消息模板后，可发送实际订阅消息。'}
+                </Text>
+              </View>
+            )}
           </View>
 
           <View style={{ marginTop: '16rpx' }}>
             <Button
-              className='ghostButton'
+              className={reminderEval.isLocalPreview ? 'ghostButton' : 'primaryButton'}
               style={{ width: '100%' }}
               onClick={handleTestReminder}
             >
-              测试今日提醒（本地预览）
+              测试今日提醒{reminderEval.isLocalPreview ? '（本地预览）' : '（实际发送）'}
             </Button>
             <Text style={{ display: 'block', textAlign: 'center', fontSize: '20rpx', color: '#B0A2A8', marginTop: '8rpx' }}>
-              测试仅在本机预览提醒效果，不会发送真实订阅消息
+              {reminderEval.isLocalPreview
+                ? '测试仅在本机预览提醒效果，不会发送真实订阅消息'
+                : '测试将通过订阅消息真实发送，请确保已授权'}
             </Text>
           </View>
         </>

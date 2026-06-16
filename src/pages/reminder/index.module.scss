@@ -269,3 +269,16 @@
   font-weight: $font-weight-medium;
   margin-top: $spacing-sm;
 }
+
+.previewHint {
+  margin-top: $spacing-md;
+  padding: $spacing-sm $spacing-md;
+  background: rgba(217, 150, 96, 0.12);
+  border-radius: $radius-md;
+}
+
+.previewHintText {
+  font-size: $font-size-xs;
+  color: #D99660;
+  line-height: 1.6;
+}

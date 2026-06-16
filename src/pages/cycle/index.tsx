@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, Switch, Button } from '@tarojs/components';
+import { View, Text, Switch, Button, Textarea } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
 import dayjs from 'dayjs';
 import classnames from 'classnames';
@@ -20,11 +20,15 @@ const CyclePage: React.FC = () => {
   const {
     cycleConfig,
     records,
+    currentCycleIndex,
     updateCycleConfig,
-    skipCurrentCycle
+    skipCurrentCycle,
+    moveToNextCycle
   } = useApp();
 
   const [editing, setEditing] = useState(false);
+  const [showSkipModal, setShowSkipModal] = useState(false);
+  const [skipReason, setSkipReason] = useState('');
 
   useDidShow(() => {
     console.log('[CyclePage] didShow');
@@ -98,16 +102,27 @@ const CyclePage: React.FC = () => {
   };
 
   const handleSkipCycle = () => {
+    setSkipReason(cycleConfig.skipReason || '');
+    setShowSkipModal(true);
+  };
+
+  const handleConfirmSkip = () => {
+    skipCurrentCycle(skipReason.trim() || undefined);
+    setShowSkipModal(false);
+    Taro.showToast({ title: '已跳过', icon: 'success' });
+  };
+
+  const handleMoveToNextCycle = () => {
     Taro.showModal({
-      title: '跳过本周期',
-      content: '确定要跳过当前周期吗？下个周期将重新开始记录。',
-      confirmText: '跳过',
+      title: '进入下一周期',
+      content: '当前周期将被归档，下一周期从预计下次月经开始。确定吗？',
+      confirmText: '确认',
       cancelText: '取消',
       confirmColor: '#D4859C',
       success: (res) => {
         if (res.confirm) {
-          skipCurrentCycle();
-          Taro.showToast({ title: '已跳过', icon: 'success' });
+          moveToNextCycle();
+          Taro.showToast({ title: '已进入下一周期', icon: 'success' });
         }
       }
     });
@@ -118,6 +133,7 @@ const CyclePage: React.FC = () => {
       <View className={styles.pageHeader}>
         <View className='flexRow'>
           <Text className={styles.pageTitle}>今天</Text>
+          <Text className={styles.cycleNoTag}>第 {currentCycleIndex} 周期</Text>
           {cycleConfig.isSkipped && (
             <Text className={styles.skippedTag}>已跳过</Text>
           )}
@@ -125,6 +141,9 @@ const CyclePage: React.FC = () => {
         <Text className={styles.pageSubtitle}>
           {dayjs().format('YYYY年M月D日 dddd')} · 第 {dayjs().diff(dayjs(cycleConfig.lastPeriodDate), 'day') + 1} 天
         </Text>
+        {cycleConfig.isSkipped && cycleConfig.skipReason && (
+          <Text className={styles.skipReasonText}>跳过原因：{cycleConfig.skipReason}</Text>
+        )}
       </View>
 
       <StatusCard
@@ -245,13 +264,57 @@ const CyclePage: React.FC = () => {
 
       <View className={styles.actionButtons}>
         <Button
-          className={styles.skipButton}
+          className={classnames(styles.skipButton, 'ghostButton')}
           onClick={handleSkipCycle}
           disabled={cycleConfig.isSkipped}
+          style={{ flex: 1, marginRight: '12rpx' }}
         >
           {cycleConfig.isSkipped ? '本周期已跳过' : '跳过本周期'}
         </Button>
+        <Button
+          className='primaryButton'
+          onClick={handleMoveToNextCycle}
+          style={{ flex: 1 }}
+        >
+          下一周期
+        </Button>
       </View>
+
+      {showSkipModal && (
+        <View className={styles.modalOverlay} onClick={() => setShowSkipModal(false)}>
+          <View className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <Text className={styles.modalTitle}>跳过本周期</Text>
+            <Text className={styles.modalDesc}>
+              跳过当前周期，进入下一周期。可填写跳过原因，便于回顾。
+            </Text>
+            <View className={styles.modalReasonInput}>
+              <Textarea
+                className={styles.reasonTextarea}
+                placeholder='请输入跳过原因（可选）'
+                value={skipReason}
+                onInput={(e) => setSkipReason(e.detail.value)}
+                maxlength={100}
+                autoHeight
+                style={{ maxHeight: '160rpx' }}
+              />
+            </View>
+            <View className={styles.modalActions}>
+              <View
+                className={classnames(styles.modalBtn, styles.modalCancelBtn)}
+                onClick={() => setShowSkipModal(false)}
+              >
+                取消
+              </View>
+              <View
+                className={classnames(styles.modalBtn, styles.modalConfirmBtn)}
+                onClick={handleConfirmSkip}
+              >
+                确认跳过
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 };

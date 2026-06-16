@@ -1,10 +1,12 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
 import dayjs from 'dayjs';
+import classnames from 'classnames';
 import { useApp } from '@/store/AppContext';
 import TodoItemComponent from '@/components/TodoItem';
-import { calculateCycleSummary, getOvulationDate, formatDate, getDaysUntilOvulation } from '@/utils/cycle';
+import { getOvulationDate, formatDate, getDaysUntilOvulation } from '@/utils/cycle';
+import type { CycleArchive } from '@/types';
 import styles from './index.module.scss';
 
 const GREETINGS = [
@@ -16,7 +18,13 @@ const GREETINGS = [
 ];
 
 const ProfilePage: React.FC = () => {
-  const { todos, cycleConfig, records, toggleTodo, resetAllData } = useApp();
+  const {
+    todos, cycleConfig, records, currentCycleIndex, cycles,
+    toggleTodo, resetAllData, getAllCycleSummaries, getCycleSummary, moveToNextCycle
+  } = useApp();
+
+  const [viewMode, setViewMode] = useState<'current' | 'history'>('current');
+  const [selectedHistoryIdx, setSelectedHistoryIdx] = useState<number | null>(null);
 
   useDidShow(() => {
     console.log('[ProfilePage] didShow');
@@ -33,12 +41,22 @@ const ProfilePage: React.FC = () => {
     return { done, total, percent: total > 0 ? Math.round((done / total) * 100) : 0 };
   }, [todos]);
 
-  const summary = useMemo(() => calculateCycleSummary(records, cycleConfig), [records, cycleConfig]);
+  const allCycles = useMemo(() => getAllCycleSummaries(), [getAllCycleSummaries]);
+  const currentSummary = useMemo(() => getCycleSummary(), [getCycleSummary]);
   const daysUntil = getDaysUntilOvulation(cycleConfig);
 
-  const getCoverageColor = () => {
-    if (summary.coveragePercent >= 75) return '#7EC8A3';
-    if (summary.coveragePercent >= 50) return '#D99660';
+  const displaySummary = useMemo(() => {
+    if (viewMode === 'current') return currentSummary;
+    if (selectedHistoryIdx !== null) {
+      const found = allCycles.find(c => c.index === selectedHistoryIdx);
+      if (found) return found.summary;
+    }
+    return allCycles[0]?.summary || currentSummary;
+  }, [viewMode, selectedHistoryIdx, currentSummary, allCycles]);
+
+  const getCoverageColor = (percent: number) => {
+    if (percent >= 75) return '#7EC8A3';
+    if (percent >= 50) return '#D99660';
     return '#D9534F';
   };
 
@@ -79,6 +97,32 @@ const ProfilePage: React.FC = () => {
     }
   };
 
+  const handleNextCycle = () => {
+    Taro.showModal({
+      title: '进入下一周期',
+      content: '当前周期将被归档到历史记录，下一周期从预计下次月经开始。确定吗？',
+      confirmText: '确认',
+      cancelText: '取消',
+      confirmColor: '#D4859C',
+      success: (res) => {
+        if (res.confirm) {
+          moveToNextCycle();
+          setViewMode('current');
+          setSelectedHistoryIdx(null);
+          Taro.showToast({ title: '已进入下一周期', icon: 'success' });
+        }
+      }
+    });
+  };
+
+  const handleSelectHistory = (cycle: CycleArchive) => {
+    setSelectedHistoryIdx(cycle.index);
+  };
+
+  const historyCycles = useMemo(() => {
+    return allCycles.filter(c => c.index !== currentCycleIndex);
+  }, [allCycles, currentCycleIndex]);
+
   return (
     <View className={styles.container}>
       <View className={styles.profileHeader}>
@@ -108,22 +152,24 @@ const ProfilePage: React.FC = () => {
       <View className={styles.summaryCards}>
         <View className={styles.summaryCard}>
           <Text className={styles.summaryIcon}>📅</Text>
-          <Text className={styles.summaryValue}>{summary.avgCycleLength}</Text>
+          <Text className={styles.summaryValue}>{displaySummary.avgCycleLength}</Text>
           <Text className={styles.summaryLabel}>平均周期 (天)</Text>
         </View>
         <View className={styles.summaryCard}>
           <Text className={styles.summaryIcon}>💕</Text>
-          <Text className={styles.summaryValue}>{summary.totalIntercourse}</Text>
-          <Text className={styles.summaryLabel}>本周期同房</Text>
+          <Text className={styles.summaryValue}>{displaySummary.totalIntercourse}</Text>
+          <Text className={styles.summaryLabel}>同房次数</Text>
         </View>
         <View className={styles.summaryCard}>
           <Text className={styles.summaryIcon}>🔥</Text>
-          <Text className={styles.summaryValue}>{summary.currentStreak}</Text>
+          <Text className={styles.summaryValue}>{displaySummary.currentStreak}</Text>
           <Text className={styles.summaryLabel}>连续天数</Text>
         </View>
         <View className={styles.summaryCard}>
           <Text className={styles.summaryIcon}>⏳</Text>
-          <Text className={styles.summaryValue}>{Math.max(0, daysUntil)}</Text>
+          <Text className={styles.summaryValue}>
+            {viewMode === 'current' ? Math.max(0, daysUntil) : '-'}
+          </Text>
           <Text className={styles.summaryLabel}>距排卵 (天)</Text>
         </View>
       </View>
@@ -146,94 +192,220 @@ const ProfilePage: React.FC = () => {
       <View className={styles.section}>
         <View className={styles.sectionHeader}>
           <Text className={styles.sectionTitle}>周期回顾</Text>
-          <Text className={styles.sectionCount}>
-            {summary.isSkipped ? '已跳过' : `第 ${summary.cycleCount} 周期`}
-          </Text>
-        </View>
-
-        <View className={styles.menuItem}>
-          <View className={styles.menuIconBox}>
-            <Text className={styles.menuIcon}>🗓️</Text>
-          </View>
-          <View className={styles.menuContent}>
-            <Text className={styles.menuTitle}>末次月经</Text>
-            <Text className={styles.menuDesc}>{cycleConfig.lastPeriodDate}</Text>
-          </View>
-        </View>
-
-        <View className={styles.menuItem}>
-          <View className={styles.menuIconBox}>
-            <Text className={styles.menuIcon}>🥚</Text>
-          </View>
-          <View className={styles.menuContent}>
-            <Text className={styles.menuTitle}>预计排卵日</Text>
-            <Text className={styles.menuDesc}>
-              {formatDate(getOvulationDate(cycleConfig))}
-              {cycleConfig.manualOvulationDate ? ' (已手动修正)' : ''}
-            </Text>
-          </View>
-        </View>
-
-        <View className={styles.menuItem}>
-          <View className={styles.menuIconBox}>
-            <Text className={styles.menuIcon}>🎯</Text>
-          </View>
-          <View className={styles.menuContent}>
-            <Text className={styles.menuTitle}>重点时段覆盖</Text>
-            <Text className={styles.menuDesc}>
-              {summary.coveredPeakDays} / {summary.peakDaysTotal} 天同房
-              <Text style={{ color: getCoverageColor(), marginLeft: '8rpx' }}>
-                {summary.coveragePercent}%
-              </Text>
-            </Text>
-          </View>
-          <View className={styles.miniBar}>
+          <View className={styles.cycleTabs}>
             <View
-              className={styles.miniBarFill}
-              style={{ width: `${summary.coveragePercent}%`, background: getCoverageColor() }}
-            />
+              className={classnames(styles.cycleTab, viewMode === 'current' && styles.cycleTabActive)}
+              onClick={() => { setViewMode('current'); setSelectedHistoryIdx(null); }}
+            >
+              当前周期
+            </View>
+            <View
+              className={classnames(styles.cycleTab, viewMode === 'history' && styles.cycleTabActive)}
+              onClick={() => setViewMode('history')}
+            >
+              历史
+            </View>
           </View>
         </View>
 
-        {summary.hasAbnormalPeriod && (
-          <View className={styles.menuItem}>
-            <View className={styles.menuIconBox} style={{ background: '#FFF1E5' }}>
-              <Text className={styles.menuIcon}>🩸</Text>
+        {viewMode === 'current' ? (
+          <View>
+            <View className={styles.cycleHeaderRow}>
+              <Text className={styles.cycleTitle}>第 {currentCycleIndex} 周期</Text>
+              {displaySummary.isSkipped && (
+                <Text className={styles.skippedBadge}>已跳过</Text>
+              )}
             </View>
-            <View className={styles.menuContent}>
-              <Text className={styles.menuTitle} style={{ color: '#D99660' }}>月经异常记录</Text>
-              <Text className={styles.menuDesc}>本周期有异常记录，建议关注规律性</Text>
+            <Text className={styles.cycleDateRange}>
+              {displaySummary.cycleStartDate} ~ {displaySummary.cycleEndDate}
+            </Text>
+
+            <View className={styles.cycleStatGrid}>
+              <View className={styles.cycleStatItem}>
+                <Text className={styles.cycleStatValue} style={{ color: '#D4859C' }}>
+                  {displaySummary.totalIntercourse}
+                </Text>
+                <Text className={styles.cycleStatLabel}>同房次数</Text>
+              </View>
+              <View className={styles.cycleStatItem}>
+                <Text className={styles.cycleStatValue} style={{ color: '#D9534F' }}>
+                  {displaySummary.abnormalCount}
+                </Text>
+                <Text className={styles.cycleStatLabel}>月经异常</Text>
+              </View>
+              <View className={styles.cycleStatItem}>
+                <Text className={styles.cycleStatValue} style={{ color: '#7EC8A3' }}>
+                  {displaySummary.medicationCount}
+                </Text>
+                <Text className={styles.cycleStatLabel}>用药记录</Text>
+              </View>
+              <View className={styles.cycleStatItem}>
+                <Text className={styles.cycleStatValue} style={{ color: '#A78BFA' }}>
+                  {displaySummary.symptomCount}
+                </Text>
+                <Text className={styles.cycleStatLabel}>身体症状</Text>
+              </View>
+            </View>
+
+            <View className={styles.coverageSection}>
+              <View className={styles.coverageHeader}>
+                <Text className={styles.coverageLabel}>重点时段覆盖</Text>
+                <Text
+                  className={styles.coveragePercent}
+                  style={{ color: getCoverageColor(displaySummary.coveragePercent) }}
+                >
+                  {displaySummary.coveredPeakDays} / {displaySummary.peakDaysTotal} 天 · {displaySummary.coveragePercent}%
+                </Text>
+              </View>
+              <View className={styles.coverageBar}>
+                <View
+                  className={styles.coverageFill}
+                  style={{
+                    width: `${displaySummary.coveragePercent}%`,
+                    background: getCoverageColor(displaySummary.coveragePercent)
+                  }}
+                />
+              </View>
+            </View>
+
+            {displaySummary.isSkipped && displaySummary.skipReason && (
+              <View className={styles.skipReasonCard}>
+                <Text className={styles.skipReasonLabel}>⏭️ 跳过原因</Text>
+                <Text className={styles.skipReasonText}>{displaySummary.skipReason}</Text>
+              </View>
+            )}
+
+            <View className={styles.reviewNote}>
+              <Text className={styles.reviewNoteText}>{displaySummary.reviewNote}</Text>
+            </View>
+
+            <View style={{ marginTop: '20rpx' }}>
+              <View
+                className={classnames('primaryButton', styles.nextCycleBtn)}
+                onClick={handleNextCycle}
+              >
+                进入下一周期
+              </View>
             </View>
           </View>
-        )}
+        ) : (
+          <View>
+            {historyCycles.length === 0 ? (
+              <View className={styles.emptyHistory}>
+                <Text className={styles.emptyHistoryText}>暂无历史周期</Text>
+                <Text className={styles.emptyHistoryDesc}>
+                  进入下一周期后，当前周期会自动归档到这里
+                </Text>
+              </View>
+            ) : (
+              <View>
+                <View className={styles.historyList}>
+                  {historyCycles.map(cycle => (
+                    <View
+                      key={cycle.index}
+                      className={classnames(
+                        styles.historyItem,
+                        selectedHistoryIdx === cycle.index && styles.historyItemSelected
+                      )}
+                      onClick={() => handleSelectHistory(cycle)}
+                    >
+                      <View className={styles.historyItemHeader}>
+                        <Text className={styles.historyCycleName}>
+                          第 {cycle.index} 周期
+                          {cycle.summary.isSkipped && ' · 已跳过'}
+                        </Text>
+                        <Text className={styles.historyArrow}>›</Text>
+                      </View>
+                      <Text className={styles.historyItemDate}>
+                        {cycle.summary.cycleStartDate} ~ {cycle.summary.cycleEndDate}
+                      </Text>
+                      <View className={styles.historyItemStats}>
+                        <Text className={styles.historyItemStat}>
+                          同房 {cycle.summary.totalIntercourse} 次
+                        </Text>
+                        <Text className={styles.historyItemStat}>
+                          覆盖 {cycle.summary.coveragePercent}%
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
 
-        {summary.hasMedication && (
-          <View className={styles.menuItem}>
-            <View className={styles.menuIconBox} style={{ background: '#E8F5E9' }}>
-              <Text className={styles.menuIcon}>💊</Text>
-            </View>
-            <View className={styles.menuContent}>
-              <Text className={styles.menuTitle} style={{ color: '#4FA67A' }}>用药记录</Text>
-              <Text className={styles.menuDesc}>部分药物可能影响受孕，请咨询医生</Text>
-            </View>
+                {selectedHistoryIdx !== null && (
+                  <View className={styles.historyDetailCard}>
+                    <View className={styles.cycleHeaderRow}>
+                      <Text className={styles.cycleTitle}>
+                        第 {selectedHistoryIdx} 周期详情
+                      </Text>
+                      {displaySummary.isSkipped && (
+                        <Text className={styles.skippedBadge}>已跳过</Text>
+                      )}
+                    </View>
+
+                    <View className={styles.cycleStatGrid}>
+                      <View className={styles.cycleStatItem}>
+                        <Text className={styles.cycleStatValue} style={{ color: '#D4859C' }}>
+                          {displaySummary.totalIntercourse}
+                        </Text>
+                        <Text className={styles.cycleStatLabel}>同房次数</Text>
+                      </View>
+                      <View className={styles.cycleStatItem}>
+                        <Text className={styles.cycleStatValue} style={{ color: '#D9534F' }}>
+                          {displaySummary.abnormalCount}
+                        </Text>
+                        <Text className={styles.cycleStatLabel}>月经异常</Text>
+                      </View>
+                      <View className={styles.cycleStatItem}>
+                        <Text className={styles.cycleStatValue} style={{ color: '#7EC8A3' }}>
+                          {displaySummary.medicationCount}
+                        </Text>
+                        <Text className={styles.cycleStatLabel}>用药记录</Text>
+                      </View>
+                      <View className={styles.cycleStatItem}>
+                        <Text className={styles.cycleStatValue} style={{ color: '#A78BFA' }}>
+                          {displaySummary.symptomCount}
+                        </Text>
+                        <Text className={styles.cycleStatLabel}>身体症状</Text>
+                      </View>
+                    </View>
+
+                    <View className={styles.coverageSection}>
+                      <View className={styles.coverageHeader}>
+                        <Text className={styles.coverageLabel}>重点时段覆盖</Text>
+                        <Text
+                          className={styles.coveragePercent}
+                          style={{ color: getCoverageColor(displaySummary.coveragePercent) }}
+                        >
+                          {displaySummary.coveredPeakDays} / {displaySummary.peakDaysTotal} 天 · {displaySummary.coveragePercent}%
+                        </Text>
+                      </View>
+                      <View className={styles.coverageBar}>
+                        <View
+                          className={styles.coverageFill}
+                          style={{
+                            width: `${displaySummary.coveragePercent}%`,
+                            background: getCoverageColor(displaySummary.coveragePercent)
+                          }}
+                        />
+                      </View>
+                    </View>
+
+                    {displaySummary.isSkipped && displaySummary.skipReason && (
+                      <View className={styles.skipReasonCard}>
+                        <Text className={styles.skipReasonLabel}>⏭️ 跳过原因</Text>
+                        <Text className={styles.skipReasonText}>{displaySummary.skipReason}</Text>
+                      </View>
+                    )}
+
+                    <View className={styles.reviewNote}>
+                      <Text className={styles.reviewNoteText}>{displaySummary.reviewNote}</Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
         )}
-
-        {summary.isSkipped && (
-          <View className={styles.menuItem}>
-            <View className={styles.menuIconBox} style={{ background: '#F5F0F2' }}>
-              <Text className={styles.menuIcon}>⏭️</Text>
-            </View>
-            <View className={styles.menuContent}>
-              <Text className={styles.menuTitle} style={{ color: '#7A6A70' }}>周期已跳过</Text>
-              <Text className={styles.menuDesc}>回顾数据仅供参考</Text>
-            </View>
-          </View>
-        )}
-
-        <View className={styles.reviewNote}>
-          <Text className={styles.reviewNoteText}>{summary.reviewNote}</Text>
-        </View>
       </View>
 
       <View className={styles.privacyCard}>

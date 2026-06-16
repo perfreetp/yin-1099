@@ -11,6 +11,11 @@ export interface DayInfo {
   isOvulationDay: boolean;
   isPeriod: boolean;
   hasRecord: boolean;
+  hasIntercourse: boolean;
+  hasMedication: boolean;
+  hasSymptom: boolean;
+  hasAbnormal: boolean;
+  recordCount: number;
 }
 
 export interface CycleConfig {
@@ -20,6 +25,7 @@ export interface CycleConfig {
   ovulationDayOffset: number;
   manualOvulationDate: string | null;
   isSkipped: boolean;
+  skipReason?: string;
 }
 
 export interface ReminderConfig {
@@ -30,6 +36,7 @@ export interface ReminderConfig {
   notifyMale: boolean;
   intensity: 'all' | 'peak' | 'start_end';
   vibrate: boolean;
+  templateIds?: string[];
 }
 
 export type RecordType = 'intercourse' | 'period_abnormal' | 'medication' | 'symptom';
@@ -53,6 +60,9 @@ export interface TodoItem {
 }
 
 export interface CycleSummary {
+  cycleIndex: number;
+  cycleStartDate: string;
+  cycleEndDate: string;
   cycleCount: number;
   avgCycleLength: number;
   avgPeriodLength: number;
@@ -66,7 +76,18 @@ export interface CycleSummary {
   hasAbnormalPeriod: boolean;
   hasMedication: boolean;
   isSkipped: boolean;
+  skipReason?: string;
   reviewNote: string;
+  totalRecords: number;
+  symptomCount: number;
+  medicationCount: number;
+  abnormalCount: number;
+}
+
+export interface CycleArchive {
+  index: number;
+  config: CycleConfig;
+  summary: CycleSummary;
 }
 
 export interface AppState {
@@ -74,4 +95,5 @@ export interface AppState {
   reminderConfig: ReminderConfig;
   records: BbtRecord[];
   todos: TodoItem[];
+  cycles: CycleArchive[];
 }
